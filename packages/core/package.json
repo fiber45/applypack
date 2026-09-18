@@ -6,6 +6,7 @@
   "description": "纯 TS 业务核心：schema / 加密 / 密文库 / 编译 / 匹配 / 改写 / 校验 / 渲染。零 DOM、零框架依赖。",
   "exports": {
     ".": "./src/index.ts",
+    "./agent": "./src/agent/index.ts",
     "./compile": "./src/compile/index.ts",
     "./crypto": "./src/crypto/index.ts",
     "./egress": "./src/egress/index.ts",

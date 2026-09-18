@@ -35,6 +35,17 @@ export interface LLMRequest {
 
 export interface LLMResponse {
   readonly text: string
+  /**
+   * provider 报的用量，**可选**。
+   *
+   * core 不依赖它 —— 它的唯一用途是让 Agent 的 token 预算用上比估算更准的
+   * 数字（见 `agent/budget.ts` 的 `usageOf`）。厂商不报就退回估算，
+   * 于是「预算」这根绳子的精度随实现变化，但不会因为缺这个字段而失效。
+   */
+  readonly usage?: {
+    readonly inputTokens?: number
+    readonly outputTokens?: number
+  }
 }
 
 /**
