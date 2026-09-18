@@ -1,0 +1,85 @@
+[
+  {
+    "id": "hallu-01",
+    "kind": "hallucinated_number",
+    "note": "凭空多出一个百分比 —— 最典型的幻觉",
+    "input": {
+      "bullets": [{ "id": "b0", "text": "重构推荐系统召回链路，将回填耗时降低 40%" }],
+      "sources": [
+        "负责推荐系统召回通道的特征工程，累计上线 12 个特征，将离线特征回填耗时从 4.2 小时降至 38 分钟。"
+      ]
+    },
+    "expect": {
+      "pass": false,
+      "failures": [{ "reason": "number_not_in_source", "bulletId": "b0", "offending": "40" }]
+    }
+  },
+  {
+    "id": "hallu-02",
+    "kind": "hallucinated_number",
+    "note": "用户规模是编的 —— 这类数字在面试里最容易被追问",
+    "input": {
+      "bullets": [{ "id": "b0", "text": "主导推荐系统召回策略，覆盖 300 万用户" }],
+      "sources": ["负责推荐系统召回通道的特征工程，累计上线 12 个特征。"]
+    },
+    "expect": {
+      "pass": false,
+      "failures": [{ "reason": "number_not_in_source", "bulletId": "b0", "offending": "300" }]
+    }
+  },
+  {
+    "id": "hallu-03",
+    "kind": "hallucinated_number",
+    "note": "4.2 改成 3 —— 看起来在同一量级，其实是另一个数",
+    "input": {
+      "bullets": [{ "id": "b0", "text": "优化特征回填，耗时从 4.2 小时降至 3 分钟" }],
+      "sources": ["将离线特征回填耗时从 4.2 小时降至 38 分钟。"]
+    },
+    "expect": {
+      "pass": false,
+      "failures": [{ "reason": "number_not_in_source", "bulletId": "b0", "offending": "3" }]
+    }
+  },
+  {
+    "id": "hallu-04",
+    "kind": "hallucinated_number",
+    "note": "真实数字都在，只是「顺手」补了一个效率提升",
+    "input": {
+      "bullets": [{ "id": "b0", "text": "重构推荐系统召回链路，回填耗时降至 38 分钟，提升效率 10%" }],
+      "sources": ["累计上线 12 个特征，将离线特征回填耗时从 4.2 小时降至 38 分钟。"]
+    },
+    "expect": {
+      "pass": false,
+      "failures": [{ "reason": "number_not_in_source", "bulletId": "b0", "offending": "10" }]
+    }
+  },
+  {
+    "id": "hallu-05",
+    "kind": "hallucinated_number",
+    "note": "英文条目里的换算式幻觉：原文没有百分比，英文版自造一个",
+    "input": {
+      "bullets": [{ "id": "b0", "text": "Built the recall pipeline, cutting turnaround by 91%" }],
+      "sources": ["将离线特征回填耗时从 4.2 小时降至 38 分钟。"]
+    },
+    "expect": {
+      "pass": false,
+      "failures": [{ "reason": "number_not_in_source", "bulletId": "b0", "offending": "91" }]
+    }
+  },
+  {
+    "id": "hallu-06",
+    "kind": "hallucinated_number",
+    "note": "一条里编了两个数字 —— 必须两个都被点名，不能只报一个",
+    "input": {
+      "bullets": [{ "id": "b0", "text": "重构推荐系统召回链路，上线 15 个特征，覆盖 300 万用户" }],
+      "sources": ["累计上线 12 个特征。"]
+    },
+    "expect": {
+      "pass": false,
+      "failures": [
+        { "reason": "number_not_in_source", "bulletId": "b0", "offending": "15" },
+        { "reason": "number_not_in_source", "bulletId": "b0", "offending": "300" }
+      ]
+    }
+  }
+]

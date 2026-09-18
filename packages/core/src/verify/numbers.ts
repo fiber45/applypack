@@ -73,8 +73,15 @@ export function untraceableNumbers(output: string, sources: readonly string[]): 
   return [...offenders].sort(compareNumeric)
 }
 
-/** 按数值大小排序；非数值（理论上不会出现）退化为字典序。 */
-function compareNumeric(a: string, b: string): number {
+/**
+ * 按数值大小排序；非数值（理论上不会出现）退化为字典序。
+ *
+ * 导出它是因为「数字集合该怎么排序」必须只有一处定义：本文件与
+ * `parity.ts` 都会输出数字列表，两处若各写一次 `sort()`，
+ * 会出现一个按 `38 < 4.2`（字典序）而另一个按 `4.2 < 38` 的报告 ——
+ * 同一个界面上的两个数字列表用两种顺序，用户会以为是两回事。
+ */
+export function compareNumeric(a: string, b: string): number {
   const left = Number(a)
   const right = Number(b)
   if (Number.isFinite(left) && Number.isFinite(right)) return left - right

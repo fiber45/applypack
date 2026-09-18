@@ -1,0 +1,74 @@
+[
+  {
+    "id": "parity-01",
+    "kind": "language_parity",
+    "note": "中英两版数字集合相同 —— 措辞不同是允许的，事实必须一致",
+    "input": {
+      "left": [
+        "负责推荐系统召回通道的特征工程，累计上线 12 个特征，将离线特征回填耗时从 4.2 小时降至 38 分钟。"
+      ],
+      "right": [
+        "Rebuilt the recall feature pipeline, shipping 12 features and cutting offline backfill from 4.2 hours to 38 minutes."
+      ]
+    },
+    "expect": { "parity": { "ok": true } }
+  },
+  {
+    "id": "parity-02",
+    "kind": "language_parity",
+    "note": "英文版把「4.2 小时 → 38 分钟」换算成了 91% —— 换算是改写，跨语言要一致的是事实",
+    "input": {
+      "left": [
+        "负责推荐系统召回通道的特征工程，累计上线 12 个特征，将离线特征回填耗时从 4.2 小时降至 38 分钟。"
+      ],
+      "right": ["Cut offline backfill turnaround by 91% and shipped 12 features"]
+    },
+    "expect": {
+      "parity": { "ok": false, "onlyInLeft": ["4.2", "38"], "onlyInRight": ["91"] }
+    }
+  },
+  {
+    "id": "parity-03",
+    "kind": "language_parity",
+    "note": "千分位归一：3000 与 3,000 是同一个数，不该报不一致",
+    "input": {
+      "left": ["服务于校内 3000 名用户"],
+      "right": ["serving 3,000 campus users"]
+    },
+    "expect": { "parity": { "ok": true } }
+  },
+  {
+    "id": "parity-04",
+    "kind": "language_parity",
+    "note": "同一个事实、两种语序 —— 顺序不影响集合",
+    "input": {
+      "left": ["累计上线 12 个特征，耗时从 4.2 小时降至 38 分钟"],
+      "right": ["38 minutes now, from 4.2 hours; 12 features shipped"]
+    },
+    "expect": { "parity": { "ok": true } }
+  },
+  {
+    "id": "parity-05",
+    "kind": "language_parity",
+    "note": "英文版把数字全丢了 —— 这是翻译时最常见的不一致，且看起来毫无问题",
+    "input": {
+      "left": ["上线 12 个特征，耗时降至 38 分钟"],
+      "right": ["Shipped new features and cut turnaround time"]
+    },
+    "expect": {
+      "parity": { "ok": false, "onlyInLeft": ["12", "38"], "onlyInRight": [] }
+    }
+  },
+  {
+    "id": "parity-06",
+    "kind": "language_parity",
+    "note": "3000 写成 30,000：一个逗号位置的手误，两份简历讲的就是两个规模",
+    "input": {
+      "left": ["服务 3000 名用户"],
+      "right": ["serving 30,000 users"]
+    },
+    "expect": {
+      "parity": { "ok": false, "onlyInLeft": ["3000"], "onlyInRight": ["30000"] }
+    }
+  }
+]

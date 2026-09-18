@@ -1,0 +1,57 @@
+[
+  {
+    "id": "verb-01",
+    "kind": "verb_repetition",
+    "note": "「重构」出现 3 次：只报第 3 条，前两条是允许的",
+    "input": {
+      "bullets": [
+        { "id": "b0", "text": "重构推荐系统召回链路，上线 12 个特征" },
+        { "id": "b1", "text": "重构离线特征回填链路，耗时降至 38 分钟" },
+        { "id": "b2", "text": "重构特征回填的校验流程，把 4.2 小时的等待压掉" }
+      ],
+      "sources": ["累计上线 12 个特征，将离线特征回填耗时从 4.2 小时降至 38 分钟。"]
+    },
+    "expect": {
+      "pass": false,
+      "failures": [{ "reason": "verb_repetition", "bulletId": "b2", "offending": "重构" }]
+    }
+  },
+  {
+    "id": "verb-02",
+    "kind": "verb_repetition",
+    "note": "出现 4 次：超出上限的那两条都要被点名",
+    "input": {
+      "bullets": [
+        { "id": "b0", "text": "主导召回通道的特征工程，上线 12 个特征" },
+        { "id": "b1", "text": "主导离线特征回填链路优化，耗时降至 38 分钟" },
+        { "id": "b2", "text": "主导特征工程的监控看板，覆盖 4.2 小时窗口" },
+        { "id": "b3", "text": "主导召回链路的离线评测，覆盖 12 个特征" }
+      ],
+      "sources": ["累计上线 12 个特征，将离线特征回填耗时从 4.2 小时降至 38 分钟。"]
+    },
+    "expect": {
+      "pass": false,
+      "failures": [
+        { "reason": "verb_repetition", "bulletId": "b2", "offending": "主导" },
+        { "reason": "verb_repetition", "bulletId": "b3", "offending": "主导" }
+      ]
+    }
+  },
+  {
+    "id": "verb-03",
+    "kind": "verb_repetition",
+    "note": "英文按首个词判重，且大小写归一",
+    "input": {
+      "bullets": [
+        { "id": "b0", "text": "Built 12 recall features for the channel" },
+        { "id": "b1", "text": "Built the offline backfill pipeline in 4.2 hours" },
+        { "id": "b2", "text": "Built a dashboard for the 38 minute refill window" }
+      ],
+      "sources": ["累计上线 12 个特征，将离线特征回填耗时从 4.2 小时降至 38 分钟。"]
+    },
+    "expect": {
+      "pass": false,
+      "failures": [{ "reason": "verb_repetition", "bulletId": "b2", "offending": "built" }]
+    }
+  }
+]

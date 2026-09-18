@@ -1,0 +1,15 @@
+{
+  "name": "@applypack/evals",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "评测集：JSON 用例 + 确定性断言 + CI 入口。依赖 @applypack/core，但通过相对路径引用（本机无法为 workspace 包创建符号链接，实测记录见根目录 pnpm-workspace.yaml）。",
+  "scripts": {
+    "test": "vitest run",
+    "test:evals": "vitest run",
+    "typecheck": "tsc"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.1"
+  }
+}

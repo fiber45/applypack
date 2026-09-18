@@ -25,7 +25,13 @@ export {
   type VerifyResult,
   type VerifyThresholds,
 } from './gate'
-export { extractNumbers, numberSet, untraceableNumbers } from './numbers'
+export { compareNumeric, extractNumbers, numberSet, untraceableNumbers } from './numbers'
+export {
+  multiViewParity,
+  textsParity,
+  type MultiViewParityReport,
+  type ParityReport,
+} from './parity'
 export { isGroundedIn, normalizeWhitespace } from './trace'
 export {
   hasPassiveVoice,

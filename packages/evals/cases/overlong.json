@@ -1,0 +1,74 @@
+[
+  {
+    "id": "over-01",
+    "kind": "overlong",
+    "note": "59 字 —— 把两句揉成一句，信息没错但读不完",
+    "input": {
+      "bullets": [
+        {
+          "id": "b0",
+          "text": "重构推荐系统召回通道的特征工程与离线特征回填链路的端到端性能优化改造工作，并将回填耗时从 4.2 小时降至 38 分钟"
+        }
+      ],
+      "sources": ["将离线特征回填耗时从 4.2 小时降至 38 分钟。"]
+    },
+    "expect": {
+      "pass": false,
+      "failures": [{ "reason": "too_long", "bulletId": "b0", "offending": "59 字" }]
+    }
+  },
+  {
+    "id": "over-02",
+    "kind": "overlong",
+    "note": "53 字 —— 刚好越线的那种，最容易被人放过",
+    "input": {
+      "bullets": [
+        {
+          "id": "b0",
+          "text": "主导推荐系统召回通道与排序链路的特征工程重构，把离线特征回填耗时从 4.2 小时降到 38 分钟并完成上线"
+        }
+      ],
+      "sources": ["将离线特征回填耗时从 4.2 小时降至 38 分钟。"]
+    },
+    "expect": {
+      "pass": false,
+      "failures": [{ "reason": "too_long", "bulletId": "b0", "offending": "53 字" }]
+    }
+  },
+  {
+    "id": "over-03",
+    "kind": "overlong",
+    "note": "英文 29 词 —— 英文按词数限流，不是按字数",
+    "input": {
+      "bullets": [
+        {
+          "id": "b0",
+          "text": "Built the recall channel feature engineering pipeline and the offline feature backfill workflow, then reduced the turnaround time from 4.2 hours to 38 minutes and shipped it to production"
+        }
+      ],
+      "sources": ["将离线特征回填耗时从 4.2 小时降至 38 分钟。"]
+    },
+    "expect": {
+      "pass": false,
+      "failures": [{ "reason": "too_long", "bulletId": "b0", "offending": "29 词" }]
+    }
+  },
+  {
+    "id": "over-04",
+    "kind": "overlong",
+    "note": "58 字 —— 只多出几个字，仍然算超",
+    "input": {
+      "bullets": [
+        {
+          "id": "b0",
+          "text": "负责推荐系统召回通道的特征工程与离线特征回填链路的性能优化改造并完成上下游联调，耗时从 4.2 小时降至 38 分钟"
+        }
+      ],
+      "sources": ["将离线特征回填耗时从 4.2 小时降至 38 分钟。"]
+    },
+    "expect": {
+      "pass": false,
+      "failures": [{ "reason": "too_long", "bulletId": "b0", "offending": "58 字" }]
+    }
+  }
+]

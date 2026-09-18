@@ -1,0 +1,78 @@
+[
+  {
+    "id": "clean-01",
+    "kind": "clean",
+    "note": "标准合格条目：强动词开头、39 字、三个数字全部来自原文",
+    "input": {
+      "bullets": [
+        { "id": "b0", "text": "重构推荐系统召回链路，上线 12 个特征，回填耗时从 4.2 小时降至 38 分钟" }
+      ],
+      "sources": [
+        "负责推荐系统召回通道的特征工程，累计上线 12 个特征，将离线特征回填耗时从 4.2 小时降至 38 分钟。"
+      ]
+    },
+    "expect": { "pass": true, "failures": [] }
+  },
+  {
+    "id": "clean-02",
+    "kind": "clean",
+    "note": "只要两个数字也算合格 —— 数字多不等于好",
+    "input": {
+      "bullets": [{ "id": "b0", "text": "主导特征回填链路优化，耗时从 4.2 小时压缩到 38 分钟" }],
+      "sources": [
+        "负责推荐系统召回通道的特征工程，累计上线 12 个特征，将离线特征回填耗时从 4.2 小时降至 38 分钟。"
+      ]
+    },
+    "expect": { "pass": true, "failures": [] }
+  },
+  {
+    "id": "clean-03",
+    "kind": "clean",
+    "note": "英文条目：14 词、过去式强动词开头",
+    "input": {
+      "bullets": [
+        {
+          "id": "b0",
+          "text": "Built the recall feature pipeline, cutting refill time from 4.2 hours to 38 minutes"
+        }
+      ],
+      "sources": [
+        "负责推荐系统召回通道的特征工程，累计上线 12 个特征，将离线特征回填耗时从 4.2 小时降至 38 分钟。"
+      ]
+    },
+    "expect": { "pass": true, "failures": [] }
+  },
+  {
+    "id": "clean-04",
+    "kind": "clean",
+    "note": "英文条目里数字是全角之外的半角写法，溯源同样成立",
+    "input": {
+      "bullets": [{ "id": "b0", "text": "Designed 12 new features for the recall channel" }],
+      "sources": ["累计上线 12 个特征"]
+    },
+    "expect": { "pass": true, "failures": [] }
+  },
+  {
+    "id": "clean-05",
+    "kind": "clean",
+    "note": "把「4.0 写法差异」放进来：原文 4.2，改写仍然 4.2（不许变成 4）",
+    "input": {
+      "bullets": [{ "id": "b0", "text": "优化特征回填链路，把 4.2 小时的耗时压到 38 分钟" }],
+      "sources": ["将离线特征回填耗时从 4.2 小时降至 38 分钟"]
+    },
+    "expect": { "pass": true, "failures": [] }
+  },
+  {
+    "id": "clean-06",
+    "kind": "clean",
+    "note": "两条条目、两种动词开头 —— 刚好不触发「同一动词最多 2 次」",
+    "input": {
+      "bullets": [
+        { "id": "b0", "text": "主导召回通道特征工程，上线 12 个特征" },
+        { "id": "b1", "text": "重构离线回填链路，耗时降至 38 分钟" }
+      ],
+      "sources": ["累计上线 12 个特征，将离线特征回填耗时从 4.2 小时降至 38 分钟。"]
+    },
+    "expect": { "pass": true, "failures": [] }
+  }
+]

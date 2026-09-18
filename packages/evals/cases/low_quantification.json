@@ -1,0 +1,32 @@
+[
+  {
+    "id": "lq-01",
+    "kind": "low_quantification",
+    "note": "整条不含数字 —— 量化率 0%，但这是**目标层**，不构成失败",
+    "input": {
+      "bullets": [{ "id": "b0", "text": "重构推荐系统召回链路的特征工程" }],
+      "sources": ["负责推荐系统召回通道的特征工程。"]
+    },
+    "expect": {
+      "pass": true,
+      "failures": [{ "reason": "low_quantification", "bulletId": "<全局>", "offending": "0%" }]
+    }
+  },
+  {
+    "id": "lq-02",
+    "kind": "low_quantification",
+    "note": "3 条中仅 1 条含数字：33% 低于 70% 目标，仍然算「没有撒谎」",
+    "input": {
+      "bullets": [
+        { "id": "b0", "text": "重构推荐系统召回链路，上线 12 个特征" },
+        { "id": "b1", "text": "优化离线特征回填链路的校验流程" },
+        { "id": "b2", "text": "设计特征工程的质量看板" }
+      ],
+      "sources": ["累计上线 12 个特征。"]
+    },
+    "expect": {
+      "pass": true,
+      "failures": [{ "reason": "low_quantification", "bulletId": "<全局>", "offending": "33%" }]
+    }
+  }
+]

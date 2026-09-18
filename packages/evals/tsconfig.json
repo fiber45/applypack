@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // 唯一一处放宽：用例通过 `import.meta.glob` 装载，需要 Vite 的
+    // import.meta 增强类型。`core` 的 `types: []` 那条约束是 `core` 自己的
+    // （它要证明零运行时依赖），评测包是开发期工具，不承担那条约束。
+    "types": ["vite/client"]
+  },
+  "include": ["src/**/*.ts", "vitest.config.ts"]
+}

@@ -1,0 +1,36 @@
+[
+  {
+    "id": "passive-01",
+    "kind": "passive_voice",
+    "note": "开头是强动词，但句中藏着被动语态 —— 只看开头会漏掉",
+    "input": {
+      "bullets": [
+        { "id": "b0", "text": "重构推荐系统召回链路，原链路被替换为双通道架构，上线 12 个特征" }
+      ],
+      "sources": ["累计上线 12 个特征。"]
+    },
+    "expect": { "pass": false, "failures": [{ "reason": "passive_voice", "bulletId": "b0" }] }
+  },
+  {
+    "id": "passive-02",
+    "kind": "passive_voice",
+    "note": "「被压缩」—— 耗时不是自己压下去的",
+    "input": {
+      "bullets": [{ "id": "b0", "text": "优化离线特征回填，耗时被压缩至 38 分钟" }],
+      "sources": ["将离线特征回填耗时从 4.2 小时降至 38 分钟。"]
+    },
+    "expect": { "pass": false, "failures": [{ "reason": "passive_voice", "bulletId": "b0" }] }
+  },
+  {
+    "id": "passive-03",
+    "kind": "passive_voice",
+    "note": "英文 was reduced —— 被动语态在中英两种语言里都要拦",
+    "input": {
+      "bullets": [
+        { "id": "b0", "text": "Built the recall pipeline, and the backfill was reduced from 4.2 hours to 38 minutes" }
+      ],
+      "sources": ["将离线特征回填耗时从 4.2 小时降至 38 分钟。"]
+    },
+    "expect": { "pass": false, "failures": [{ "reason": "passive_voice", "bulletId": "b0" }] }
+  }
+]

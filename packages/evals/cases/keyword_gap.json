@@ -1,0 +1,48 @@
+[
+  {
+    "id": "kw-01",
+    "kind": "keyword_gap",
+    "note": "命中 1/3。关键词覆盖是**目标层**：不达标不算失败，只是没做到最好",
+    "input": {
+      "bullets": [{ "id": "b0", "text": "重构推荐系统召回链路，上线 12 个特征" }],
+      "sources": ["累计上线 12 个特征。"],
+      "skills": ["Python", "PyTorch", "推荐系统"]
+    },
+    "expect": {
+      "pass": true,
+      "failures": [
+        { "reason": "low_keyword_coverage", "bulletId": "<全局>", "offending": "Python、PyTorch" }
+      ]
+    }
+  },
+  {
+    "id": "kw-02",
+    "kind": "keyword_gap",
+    "note": "一个都没命中：缺口里要列全，不能只说「覆盖不足」",
+    "input": {
+      "bullets": [{ "id": "b0", "text": "主导特征回填链路优化，耗时降至 38 分钟" }],
+      "sources": ["将离线特征回填耗时从 4.2 小时降至 38 分钟。"],
+      "skills": ["Kubernetes", "Flink"]
+    },
+    "expect": {
+      "pass": true,
+      "failures": [
+        { "reason": "low_keyword_coverage", "bulletId": "<全局>", "offending": "Kubernetes、Flink" }
+      ]
+    }
+  },
+  {
+    "id": "kw-03",
+    "kind": "keyword_gap",
+    "note": "关键词匹配大小写无关，缺的是另一个词",
+    "input": {
+      "bullets": [{ "id": "b0", "text": "Built the offline backfill pipeline in 4.2 hours" }],
+      "sources": ["将离线特征回填耗时从 4.2 小时降至 38 分钟。"],
+      "skills": ["Spark", "Backfill"]
+    },
+    "expect": {
+      "pass": true,
+      "failures": [{ "reason": "low_keyword_coverage", "bulletId": "<全局>", "offending": "Spark" }]
+    }
+  }
+]

@@ -1,0 +1,54 @@
+[
+  {
+    "id": "weak-01",
+    "kind": "weak_verb",
+    "note": "「参与」是简历里最该被换掉的开头",
+    "input": {
+      "bullets": [{ "id": "b0", "text": "参与推荐系统召回链路的特征工程重构，上线 12 个特征" }],
+      "sources": ["累计上线 12 个特征。"]
+    },
+    "expect": {
+      "pass": false,
+      "failures": [{ "reason": "weak_verb_opening", "bulletId": "b0", "offending": "参与" }]
+    }
+  },
+  {
+    "id": "weak-02",
+    "kind": "weak_verb",
+    "note": "「协助」同样把功劳让了出去",
+    "input": {
+      "bullets": [{ "id": "b0", "text": "协助完成离线特征回填链路的优化，耗时降至 38 分钟" }],
+      "sources": ["将离线特征回填耗时从 4.2 小时降至 38 分钟。"]
+    },
+    "expect": {
+      "pass": false,
+      "failures": [{ "reason": "weak_verb_opening", "bulletId": "b0", "offending": "协助" }]
+    }
+  },
+  {
+    "id": "weak-03",
+    "kind": "weak_verb",
+    "note": "英文的 responsible for —— 词表覆盖中英两种弱开头",
+    "input": {
+      "bullets": [{ "id": "b0", "text": "Responsible for 12 recall-channel features" }],
+      "sources": ["累计上线 12 个特征。"]
+    },
+    "expect": {
+      "pass": false,
+      "failures": [{ "reason": "weak_verb_opening", "bulletId": "b0", "offending": "responsible for" }]
+    }
+  },
+  {
+    "id": "weak-04",
+    "kind": "weak_verb",
+    "note": "「配合」也是弱开头；弱开头优先于「不在强动词表里」被报出，只报一次",
+    "input": {
+      "bullets": [{ "id": "b0", "text": "配合团队完成推荐系统召回通道的特征工程，上线 12 个特征" }],
+      "sources": ["累计上线 12 个特征。"]
+    },
+    "expect": {
+      "pass": false,
+      "failures": [{ "reason": "weak_verb_opening", "bulletId": "b0", "offending": "配合" }]
+    }
+  }
+]
