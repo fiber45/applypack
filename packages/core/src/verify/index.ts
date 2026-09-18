@@ -8,9 +8,32 @@
  * 2. **零网络**。校验只读本地数据。
  * 3. **纯函数**。同一输入永远同一输出 —— 评测集能跑 CI 的前提。
  *
- * T2.1 阶段这里只有溯源所需的最小实现（数字与文本比对）；
- * T3.2 会在此之上补关键词覆盖、长度、动词重复率等指标。
+ * `gate.ts` 是 DESIGN 8.6 那张指标表的全部实现 —— 七项指标，三层严重性。
  */
 
+export {
+  DEFAULT_THRESHOLDS,
+  FATAL_REASONS,
+  verifyBullets,
+  verifyFacts,
+  type Bullet,
+  type Failure,
+  type FailureReason,
+  type FailureSeverity,
+  type VerifyInput,
+  type VerifyMetrics,
+  type VerifyResult,
+  type VerifyThresholds,
+} from './gate'
 export { extractNumbers, numberSet, untraceableNumbers } from './numbers'
 export { isGroundedIn, normalizeWhitespace } from './trace'
+export {
+  hasPassiveVoice,
+  isCjkDominant,
+  isStrongOpening,
+  leadingToken,
+  weakOpener,
+  EN_STRONG_VERBS,
+  WEAK_OPENERS,
+  ZH_STRONG_VERBS,
+} from './verbs'
