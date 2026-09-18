@@ -194,7 +194,9 @@ def main() -> None:
     ]
     for filename, header, rows, footer in targets:
         path = FIXTURES / filename
-        path.write_text(render_ts(header, rows, footer), encoding="utf-8")
+        # newline="\n" 是刻意的：默认会按平台写 CRLF，在 Windows 上生成的文件
+        # 与仓库里其余文件（.gitattributes 统一为 LF）不一致，每次生成都会多出无意义的 diff。
+        path.write_text(render_ts(header, rows, footer), encoding="utf-8", newline="\n")
         print(f"wrote {path.relative_to(FIXTURES.parent.parent.parent.parent)} ({len(rows)} vectors)")
 
 
