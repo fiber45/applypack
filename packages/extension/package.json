@@ -1,0 +1,18 @@
+{
+  "name": "@applypack/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "浏览器扩展（MV3）。T1.5 先落地扩展侧密文副本：持同一份密文、用同一口令独立解锁、会话超时后重新解锁。依赖 @applypack/core，通过相对路径引用（本机无法为 workspace 包创建符号链接，实测记录见根目录 pnpm-workspace.yaml）。",
+  "exports": {
+    ".": "./src/index.ts",
+    "./vault": "./src/vault/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.1"
+  }
+}

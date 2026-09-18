@@ -289,3 +289,76 @@ describe('打开外部输入：先校验结构，再看口令', () => {
     expect(await rejectionCode(Vault.open(tampered, PASSPHRASE))).toBe('decryption_failed')
   })
 })
+
+/**
+ * 「这份密文是不是我们的、里面是什么」—— 扩展端密文副本（T1.5）依赖的判决手段。
+ *
+ * 这组断言要证明的是一个**能力边界**：`loadPayload` 能回答的问题恰好是
+ * 「我手里这把 DEK 打得开这团 payload 吗，打开之后是什么」，多一点都没有。
+ * 正面（同源 ⇒ 解得出档案，含换口令之后）与反面（另一个库 / 被改过 ⇒ 解不开）
+ * 都要有 —— 只测正面的话，「永远返回同一份缓存」也能通过。
+ */
+describe('解一份不属于本会话的 payload：loadPayload', () => {
+  it('同一个库保存过的那份 payload：解得出内容（内容换了，密钥没换）', async () => {
+    const vault = await Vault.create(PASSPHRASE, CREATE)
+
+    await vault.saveArchive(maximalArchiveV1)
+    const next = vault.file.payload
+
+    await vault.saveArchive(emptyArchiveV1())
+
+    // 这是扩展端「推送刷新」的全部依据：手里这把密钥对**后来的** payload 依然有效。
+    expect(await vault.loadPayload(next)).toEqual(maximalArchiveV1)
+  })
+
+  it('换口令之后照样解得开 —— 换掉的是封装，不是那把密钥', async () => {
+    const vault = await Vault.create(PASSPHRASE, { ...CREATE, archive: maximalArchiveV1 })
+    const payload = vault.file.payload
+
+    await vault.changePassphrase('another-passphrase')
+
+    // 这条是 DEK 分层的第二个证据（第一个是「payload 逐字节不变」）：
+    // 头部（盐 / wrappedKey）整体换掉了，而内容仍然由同一把 DEK 保护。
+    expect(await vault.loadPayload(payload)).toEqual(maximalArchiveV1)
+  })
+
+  it('loadArchive 就是对自己那份 payload 调用它（两条路径不会各自漂移）', async () => {
+    const vault = await Vault.create(PASSPHRASE, { ...CREATE, archive: maximalArchiveV1 })
+
+    expect(await vault.loadPayload(vault.file.payload)).toEqual(await vault.loadArchive())
+  })
+
+  it('另一个库的 payload ⇒ decryption_failed', async () => {
+    const mine = await Vault.create(PASSPHRASE, CREATE)
+    const other = await Vault.create(PASSPHRASE, { ...CREATE, archive: maximalArchiveV1 })
+
+    expect(await rejectionCode(mine.loadPayload(other.file.payload))).toBe('decryption_failed')
+  })
+
+  it('被篡改一个字节的 payload ⇒ decryption_failed', async () => {
+    const vault = await Vault.create(PASSPHRASE, { ...CREATE, archive: maximalArchiveV1 })
+    const bytes = await base64ToBytes(vault.file.payload.ciphertext)
+    bytes[0] = (bytes[0] ?? 0) ^ 0xff
+
+    expect(
+      await rejectionCode(
+        vault.loadPayload({ ...vault.file.payload, ciphertext: await bytesToBase64(bytes) }),
+      ),
+    ).toBe('decryption_failed')
+  })
+
+  it('它不改动会话的任何状态', async () => {
+    const vault = await Vault.create(PASSPHRASE, { ...CREATE, archive: maximalArchiveV1 })
+    const before = vault.toVaultText()
+    const other = await Vault.create(PASSPHRASE, CREATE)
+
+    // 试开别的库（一定失败）与试开自己的（一定成功），两条路都不许有副作用：
+    // 否则调用方就得先关心调用顺序。
+    await rejectionCode(vault.loadPayload(other.file.payload))
+    await vault.loadPayload(vault.file.payload)
+
+    expect(vault.toVaultText()).toBe(before)
+    expect(vault.isLocked).toBe(false)
+    expect(await vault.loadArchive()).toEqual(maximalArchiveV1)
+  })
+})

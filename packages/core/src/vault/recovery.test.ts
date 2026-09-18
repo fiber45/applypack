@@ -189,15 +189,34 @@ describe('③ API 面是封闭的：代码里没有第二个入口', () => {
   it('Vault 实例上的方法恰好是这些，全部要求先解锁', () => {
     const methods = Object.getOwnPropertyNames(Vault.prototype).filter((key) => key !== 'constructor')
 
+    // `loadPayload` 是 T1.5（扩展侧密文副本）加进来的**唯一**一个新入口：
+    // 扩展手里是同一个库的镜像，Web 端每保存一次就推来一份新密文，
+    // 而密钥不变 —— 所以它要能「用手里的密钥解**镜像里此刻的**那份 payload」，
+    // 而不是只能读自己解锁时刻的那一份。
+    // 它满足本组的要求：`#requireDek` 守在前面，锁定态抛 `vault_locked`
+    // （下面有断言）—— 也就是说它解不开任何没有口令的东西。
+    // 加它的时候这一行必须跟着改，而这个改动出现在 diff 里，正是本组存在的意义。
     expect(methods.sort()).toEqual([
       'changePassphrase',
       'file',
       'isLocked',
       'loadArchive',
+      'loadPayload',
       'lock',
       'saveArchive',
       'toVaultText',
     ])
+  })
+
+  it('loadPayload 不是一条不需要口令的路：锁定态调用抛 vault_locked', async () => {
+    const vault = await sealedVault()
+    const payload = vault.file.payload
+
+    vault.lock()
+
+    // 这里必须是抛出而不是返回某个「解不开」的哨兵值：调用方要能区分
+    // 「这份密文不是我们的」与「我们自己还没解锁」，而这两件事的处置完全相反。
+    expect(await rejectionCode(vault.loadPayload(payload))).toBe('vault_locked')
   })
 
   it('唯一能解出档案的入口需要口令，且没有任何重载能绕过它', async () => {

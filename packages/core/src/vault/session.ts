@@ -44,6 +44,7 @@ import {
   wrapDek,
   type EncryptedEnvelope,
   type EnvelopeKdf,
+  type EnvelopeSealedBox,
   type KdfParams,
 } from '../crypto/index'
 import { deserializeArchive, emptyArchiveV1, serializeArchive, type ArchiveV1 } from '../schema/index'
@@ -154,10 +155,45 @@ export class Vault {
     return serializeVaultFile(this.#encrypted)
   }
 
-  /** 解出档案全文。 */
+  /** 解出档案全文。等价于对**本会话信封里的** payload 调一次 `loadPayload`。 */
   async loadArchive(): Promise<ArchiveV1> {
+    return this.loadPayload(this.#encrypted.payload)
+  }
+
+  /**
+   * 解出**指定 `payload`** 里的档案全文 —— 不要求它是本会话信封里的那一份。
+   *
+   * 与 `loadArchive` 的关系是刻意的：后者就是「对自己那份 payload 调它」。
+   * 两条路径因此不可能出现偏差（同一个理由见 `envelope.ts` ④：
+   * 整包操作与分解原语共用同一套 AAD 构造，不会出现「整包能解、重排后解不开」）。
+   *
+   * ## 为什么需要「解一份不属于我的 payload」
+   *
+   * 唯一的调用方是**扩展端的密文副本**（T1.5）。扩展手里是同一个库的**镜像**：
+   * Web 端每次保存都会推来一份新的密文，而扩展的密钥并不随之改变
+   * （`saveArchive` 只换 payload，DEK 不动）。于是扩展的正确姿势是
+   * 「**密钥持有者**（本对象）与**当前内容**（镜像里的那份密文）分开」——
+   * 读档案时拿镜像里**此刻**的 payload 来解。
+   *
+   * 反过来说也成立：如果没有这个方法，扩展就只能一直读 `Vault` 自己那份
+   * 解锁时刻的 payload，于是「推送刷新」会表现为**一次静默的失效** ——
+   * 推送被接受、存储被更新、`status` 一切正常，而用户读到的还是旧档案。
+   * （这不是假想：T1.5 的第一版就是这么写的，是 `mirror.test.ts` 里
+   * 「推送之后扩展读到新内容」那条断言把它逼出来的。）
+   *
+   * ## 这不是「多开了一个入口」
+   *
+   * 它要求会话**已经解锁**（`#requireDek` 在锁定态抛 `vault_locked`），
+   * 而解锁只能由口令完成；它也不改变本对象的任何状态。
+   * 想用它恢复数据，前提是先有口令 —— 那就不是恢复路径了。
+   * 记在 `recovery.test.ts` ③ 组里，加它的时候那一行断言必须跟着改。
+   *
+   * 解不开时抛 `decryption_failed`（与 `openArchive` 一致）：调用方问的是
+   * 「这份密文是不是我们的」，而失败的具体原因在 AEAD 的数学上不可区分。
+   */
+  async loadPayload(payload: EnvelopeSealedBox): Promise<ArchiveV1> {
     const dekBytes = this.#requireDek()
-    const plaintext = await openPayload(dekBytes, this.#encrypted.payload)
+    const plaintext = await openPayload(dekBytes, payload)
 
     let text: string
     try {
