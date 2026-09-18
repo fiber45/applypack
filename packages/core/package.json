@@ -10,6 +10,7 @@
     "./crypto": "./src/crypto/index.ts",
     "./egress": "./src/egress/index.ts",
     "./match": "./src/match/index.ts",
+    "./render": "./src/render/index.ts",
     "./schema": "./src/schema/index.ts",
     "./vault": "./src/vault/index.ts",
     "./verify": "./src/verify/index.ts"
