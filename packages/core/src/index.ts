@@ -9,5 +9,6 @@
  */
 
 export * from './crypto/index'
+export * from './egress/index'
 export * from './schema/index'
 export * from './vault/index'

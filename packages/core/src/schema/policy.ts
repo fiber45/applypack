@@ -69,12 +69,24 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
+/**
+ * 可下标访问 —— 对象**与数组**都算。
+ *
+ * 这里不能复用 `isPlainObject`：`listLeafPaths` 会给数组产出 `profiles.0.network`
+ * 这样的数字下标路径，而数组不是 plain object。用 `isPlainObject` 判断会让
+ * 任何穿过数组的路径在第一步就中断、静默返回 `undefined` —— 于是整棵
+ * `basics.profiles` 的 B 级值都不会被扫描器看到。**漏报，且没有任何症状。**
+ */
+function isIndexable(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object'
+}
+
 /** 按点分路径取值，任一段不存在则返回 `undefined` */
 export function getAtPath(value: unknown, path: string): unknown {
   let current: unknown = value
   for (const segment of path.split('.')) {
-    if (!isPlainObject(current)) return undefined
-    current = current[segment]
+    if (!isIndexable(current)) return undefined
+    current = (current as Record<string, unknown>)[segment]
   }
   return current
 }
