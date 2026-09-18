@@ -1,0 +1,19 @@
+packages:
+  - 'packages/*'
+
+# 扁平 node_modules 布局，不创建符号链接。
+#
+# 为什么需要它 —— 实测记录（2026-09-18，Windows）：
+#   - 在 C:\...\AppData\Local\Temp 下装，符号链接正常，isolated 布局可用
+#   - 在本仓库所在路径下装，报 `Failed to create symlink ... (os error 2)`
+#   - 关闭沙箱后在**同一路径**复现同样失败 ⇒ 与执行环境无关，是路径本身的问题
+#   - 换成 hoisted 后，在本仓库路径下安装成功
+#
+# 为什么写在这里而不是 .npmrc —— 实测 pnpm 12 **不从 .npmrc 读取 node-linker**
+# （`pnpm config get node-linker` 返回 undefined，且只加 .npmrc 时安装仍然失败）。
+# pnpm 10.6+ 起 pnpm 自身的设置以本文件为准。
+#
+# 代价：hoisted 会失去 isolated 模式对「幽灵依赖」的强制隔离 ——
+# 未在 package.json 里声明的依赖也可能被 import 成功。本项目靠 code review
+# 与后续 lint 规则（core 不得 import web / extension）来补这一层，而不是靠包管理器。
+nodeLinker: hoisted

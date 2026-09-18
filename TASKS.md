@@ -19,12 +19,16 @@ T1.1 schema → T1.2 加密 → T2.1 编译 → T2.2 匹配 → T3.2 硬校验 �
 
 ## M1 · 骨架、加密与密文库
 
-### T1.1 schema 定义
+### T1.1 schema 定义 ✅ 已完成
 产出：`core/schema/`
-- [ ] JSON Resume 基础上扩展 `i18n: {zh, en}`、`customFields`、`schemaVersion` + 迁移函数
-- [ ] 每个字段标好 A / B 级，B 级带 `neverSendToLLM: true`
-- [ ] 序列化 → 反序列化深相等
-- [ ] 旧版数据经迁移函数可升级（含一条真实的历史版本样例）
+- [x] JSON Resume 基础上扩展 `i18n: {zh, en}`、`customFields`、`schemaVersion` + 迁移函数
+- [x] 每个字段标好 A / B 级，B 级带 `neverSendToLLM: true`
+- [x] 序列化 → 反序列化深相等
+- [x] 旧版数据经迁移函数可升级（含一条真实的历史版本样例）
+
+> 46 条断言，`pnpm test` 与 `pnpm typecheck` 均通过。
+> 清单之外另加了两处编译期守卫（`level-spec.guard.ts` / `no-runtime-deps.guard.ts`），
+> 把「漏标字段会编译失败」「core 里不存在 document / window / process」从注释变成持续可验证的断言。
 
 ### T1.2 加密原语
 产出：`core/crypto/`

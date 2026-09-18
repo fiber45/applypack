@@ -1,0 +1,65 @@
+{
+  "version": 0,
+  "name": "林知远",
+  "title": "算法工程师",
+  "phone": "13800138000",
+  "email": "linzhiyuan@example.com",
+  "city": "杭州",
+  "gender": "男",
+  "birthDate": "2002-05-14",
+  "idNumber": "330106200205140011",
+  "politicalStatus": "共青团员",
+  "nativePlace": "浙江宁波",
+  "website": "https://linzhiyuan.dev",
+  "github": "linzhiyuan",
+  "summary": "计算机科学与技术专业本科应届生，专注推荐系统与特征工程。",
+  "experiences": [
+    {
+      "company": "杭州某某科技有限公司",
+      "role": "算法工程实习生",
+      "start": "2025-06",
+      "end": "2025-09",
+      "location": "杭州",
+      "bullets": [
+        "负责召回通道的特征工程，累计上线 12 个特征",
+        "将离线特征回填耗时从 4.2 小时降至 38 分钟"
+      ]
+    }
+  ],
+  "educations": [
+    {
+      "school": "某某大学",
+      "major": "计算机科学与技术",
+      "degree": "本科",
+      "start": "2022-09",
+      "end": "2026-06",
+      "gpa": "3.7/4.0",
+      "highlights": ["专业排名前 8%"]
+    }
+  ],
+  "projects": [
+    {
+      "name": "校园二手交易推荐系统",
+      "description": "基于协同过滤与内容特征的混合推荐，服务于校内 3000+ 用户。",
+      "highlights": ["召回率相比热门榜提升 27%"],
+      "start": "2025-03",
+      "end": "2025-05"
+    }
+  ],
+  "skills": ["Python", "PyTorch", "Spark", "SQL"],
+  "certificates": [
+    {
+      "name": "全国大学英语六级考试",
+      "issuer": "全国大学英语四六级考试委员会",
+      "date": "2024-06",
+      "score": "562"
+    }
+  ],
+  "awards": [
+    {
+      "title": "全国大学生数学建模竞赛省级二等奖",
+      "date": "2024-09",
+      "awarder": "浙江省教育厅"
+    }
+  ]
+}

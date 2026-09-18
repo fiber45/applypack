@@ -1,0 +1,22 @@
+{
+  "name": "@applypack/core",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "纯 TS 业务核心：schema / 加密 / 密文库 / 编译 / 匹配 / 改写 / 校验 / 渲染。零 DOM、零框架依赖。",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.1"
+  }
+}

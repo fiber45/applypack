@@ -1,0 +1,22 @@
+{
+  "name": "applypack",
+  "version": "0.1.0",
+  "private": true,
+  "description": "投递包 · applypack —— 一份档案，投遍所有网申。",
+  "license": "MIT",
+  "packageManager": "pnpm@12.4.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "turbo run test",
+    "test:evals": "turbo run test:evals",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "build": "turbo run build"
+  },
+  "devDependencies": {
+    "turbo": "^2.10.13",
+    "typescript": "^7.0.2"
+  }
+}

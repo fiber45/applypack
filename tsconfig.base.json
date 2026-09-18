@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "ES2023",
+
+    // 关键约束：lib 里**不含 DOM**，也不含 Node。
+    // 这是 `core` 包「零 DOM 依赖、零运行时依赖」的编译期强制手段 ——
+    // 一旦有人在 core 里碰 document / window / process，typecheck 会直接失败，
+    // 而不是靠 code review 或 lint 提醒。见 AGENTS.md §3。
+    "lib": ["ES2023"],
+
+    // 不自动包含任何 @types 包。
+    // 默认行为是把 node_modules/@types 下的**全部**包注入全局作用域，
+    // 于是哪天某个传递依赖带来了 @types/node，core 里就能悄悄用上 process、
+    // 「零运行时依赖」会在没人察觉的情况下失效。显式置空，让这条约束成为结构性的。
+    "types": [],
+
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
+  }
+}
