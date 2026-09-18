@@ -9,6 +9,7 @@
     "./compile": "./src/compile/index.ts",
     "./crypto": "./src/crypto/index.ts",
     "./egress": "./src/egress/index.ts",
+    "./match": "./src/match/index.ts",
     "./schema": "./src/schema/index.ts",
     "./vault": "./src/vault/index.ts",
     "./verify": "./src/verify/index.ts"
