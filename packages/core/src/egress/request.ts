@@ -23,7 +23,12 @@ import { blockingLeaks, scanPayload, type Leak } from './scan'
 import type { LLMClient, LLMMessage, LLMRequest, LLMResponse } from './types'
 
 export interface AssembleOptions {
-  readonly archive: ArchiveV1
+  /**
+   * 用户档案。**可选** —— JD 编译这类任务的上下文里根本不该有用户数据，
+   * 传一份空档案进去反而会在载荷里留下一个空的 `{}` 让人误以为「档案已就位」。
+   * 省略即表示「本次请求与用户档案无关」。
+   */
+  readonly archive?: ArchiveV1
   readonly model: string
   /** 系统提示：角色 + 硬约束 + 输出 schema。永不变。 */
   readonly system: string
@@ -41,17 +46,20 @@ export interface AssembleOptions {
  * 后续任何一次 `request.cachedPrefix.push(...)` 都会抛错，而不是悄悄多送一份数据出去。
  */
 export function assembleLLMRequest(options: AssembleOptions): LLMRequest {
-  const profile = projectArchiveForLLM(options.archive)
-
   const cachedPrefix: LLMMessage[] = [
     { role: 'user', content: options.system },
   ]
   if (options.reference !== undefined && options.reference !== '') {
     cachedPrefix.push({ role: 'user', content: options.reference })
   }
-  // 档案在缓存前缀的**末尾**：它是会话内最不稳定的稳定内容，
-  // 把断点打在它之后，JD 与任务指令的变动才不会波及系统提示与范例。
-  cachedPrefix.push({ role: 'user', content: JSON.stringify(profile) })
+  if (options.archive !== undefined) {
+    // 档案在缓存前缀的**末尾**：它是会话内最不稳定的稳定内容，
+    // 把断点打在它之后，JD 与任务指令的变动才不会波及系统提示与范例。
+    cachedPrefix.push({
+      role: 'user',
+      content: JSON.stringify(projectArchiveForLLM(options.archive)),
+    })
+  }
 
   const request: LLMRequest = {
     model: options.model,
@@ -59,6 +67,8 @@ export function assembleLLMRequest(options: AssembleOptions): LLMRequest {
     volatile: options.volatile,
   }
 
+  // 没有档案时也过一遍断言：它此时扫不出东西，但**每次都调用**这件事本身
+  // 才是契约 —— 出网路径上不留「因为这次没有数据所以跳过检查」的分支。
   assertNoBLevelEgress(request, options.archive)
 
   return Object.freeze({
@@ -76,13 +86,13 @@ export function assembleLLMRequest(options: AssembleOptions): LLMRequest {
  * 「正常提及」区分，把它们升级成阻断会让整个机制在第一次遇到中文姓名时被关掉。
  * 短标识符的防线是路径扫描 + 投影，不是值扫描。见 scan.ts 的说明。
  */
-export function inspectEgress(payload: unknown, archive: ArchiveV1): readonly Leak[] {
-  return scanPayload(payload, archive)
+export function inspectEgress(payload: unknown, source: unknown): readonly Leak[] {
+  return scanPayload(payload, source)
 }
 
 /** 出口断言：命中阻断级别的泄漏直接抛错。 */
-export function assertNoBLevelEgress(payload: unknown, archive: ArchiveV1): void {
-  const blocking = blockingLeaks(inspectEgress(payload, archive))
+export function assertNoBLevelEgress(payload: unknown, source: unknown): void {
+  const blocking = blockingLeaks(inspectEgress(payload, source))
   if (blocking.length > 0) throw new EgressLeakError(blocking)
 }
 

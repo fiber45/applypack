@@ -1,0 +1,322 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`编译 schema > CompiledExperience 形状快照 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "entries": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "endDate": {
+            "type": [
+              "string",
+              "null",
+            ],
+          },
+          "kind": {
+            "enum": [
+              "work",
+              "project",
+              "education",
+              "award",
+              "certificate",
+              "other",
+            ],
+            "type": "string",
+          },
+          "numbers": {
+            "items": {
+              "type": "string",
+            },
+            "type": "array",
+          },
+          "organization": {
+            "minLength": 1,
+            "type": "string",
+          },
+          "sourceText": {
+            "minLength": 1,
+            "type": "string",
+          },
+          "startDate": {
+            "type": [
+              "string",
+              "null",
+            ],
+          },
+          "title": {
+            "minLength": 1,
+            "type": "string",
+          },
+        },
+        "required": [
+          "kind",
+          "title",
+          "organization",
+          "startDate",
+          "endDate",
+          "sourceText",
+          "numbers",
+        ],
+        "type": "object",
+      },
+      "type": "array",
+    },
+  },
+  "required": [
+    "entries",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`编译 schema > CompiledJd 形状快照 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "company": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "hardRequirements": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "degree",
+              "major",
+              "graduation",
+              "language",
+              "certificate",
+              "location",
+              "other",
+            ],
+            "type": "string",
+          },
+          "strict": {
+            "type": "boolean",
+          },
+          "text": {
+            "minLength": 1,
+            "type": "string",
+          },
+        },
+        "required": [
+          "kind",
+          "text",
+          "strict",
+        ],
+        "type": "object",
+      },
+      "type": "array",
+    },
+    "language": {
+      "enum": [
+        "zh",
+        "en",
+        "mixed",
+      ],
+      "type": "string",
+    },
+    "register": {
+      "enum": [
+        "formal",
+        "technical",
+        "business",
+        "casual",
+      ],
+      "type": "string",
+    },
+    "responsibilities": {
+      "items": {
+        "minLength": 1,
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "skills": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence": {
+            "minLength": 1,
+            "type": "string",
+          },
+          "name": {
+            "minLength": 1,
+            "type": "string",
+          },
+          "proficiency": {
+            "enum": [
+              "expert",
+              "proficient",
+              "familiar",
+            ],
+            "type": "string",
+          },
+          "required": {
+            "type": "boolean",
+          },
+        },
+        "required": [
+          "name",
+          "proficiency",
+          "required",
+          "evidence",
+        ],
+        "type": "object",
+      },
+      "type": "array",
+    },
+    "title": {
+      "minLength": 1,
+      "type": "string",
+    },
+  },
+  "required": [
+    "title",
+    "company",
+    "hardRequirements",
+    "skills",
+    "responsibilities",
+    "register",
+    "language",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`编译 schema > 理由粒度相关子 schema 形状快照 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "enum": [
+        "degree",
+        "major",
+        "graduation",
+        "language",
+        "certificate",
+        "location",
+        "other",
+      ],
+      "type": "string",
+    },
+    "strict": {
+      "type": "boolean",
+    },
+    "text": {
+      "minLength": 1,
+      "type": "string",
+    },
+  },
+  "required": [
+    "kind",
+    "text",
+    "strict",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`编译 schema > 理由粒度相关子 schema 形状快照 2`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "evidence": {
+      "minLength": 1,
+      "type": "string",
+    },
+    "name": {
+      "minLength": 1,
+      "type": "string",
+    },
+    "proficiency": {
+      "enum": [
+        "expert",
+        "proficient",
+        "familiar",
+      ],
+      "type": "string",
+    },
+    "required": {
+      "type": "boolean",
+    },
+  },
+  "required": [
+    "name",
+    "proficiency",
+    "required",
+    "evidence",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`编译 schema > 理由粒度相关子 schema 形状快照 3`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "endDate": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "kind": {
+      "enum": [
+        "work",
+        "project",
+        "education",
+        "award",
+        "certificate",
+        "other",
+      ],
+      "type": "string",
+    },
+    "numbers": {
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "organization": {
+      "minLength": 1,
+      "type": "string",
+    },
+    "sourceText": {
+      "minLength": 1,
+      "type": "string",
+    },
+    "startDate": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "title": {
+      "minLength": 1,
+      "type": "string",
+    },
+  },
+  "required": [
+    "kind",
+    "title",
+    "organization",
+    "startDate",
+    "endDate",
+    "sourceText",
+    "numbers",
+  ],
+  "type": "object",
+}
+`;

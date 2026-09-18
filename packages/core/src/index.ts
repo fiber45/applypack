@@ -8,7 +8,9 @@
  * @see AGENTS.md §3
  */
 
+export * from './compile/index'
 export * from './crypto/index'
 export * from './egress/index'
 export * from './schema/index'
 export * from './vault/index'
+export * from './verify/index'
