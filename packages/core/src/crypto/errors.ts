@@ -25,6 +25,14 @@ export type CryptoErrorCode =
   | 'unsupported_algorithm'
   /** 运行环境缺少必需的密码学能力（本实现依赖的 libsodium 未就绪）。 */
   | 'crypto_unavailable'
+  /**
+   * 密文库会话已锁定：数据密钥已从内存清除。
+   *
+   * 与 `decryption_failed` 分开的理由：这不是「口令错」，而是**调用顺序错**。
+   * 混淆两者会让「忘了先解锁」表现为「口令错误」，然后用户开始怀疑自己记错口令 ——
+   * 一个诊断信息的错误足以把用户引向完全相反的处置方向。
+   */
+  | 'vault_locked'
 
 export class CryptoError extends Error {
   readonly code: CryptoErrorCode

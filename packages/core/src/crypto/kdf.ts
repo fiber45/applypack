@@ -51,6 +51,16 @@ export async function deriveKek(
     )
   }
 
+  // 类型检查不是多余的形式主义：密钥派生是全系统唯一的「口令入口」，
+  // 而它下面紧接着就要对 passphrase 调 `.normalize()`。若口令来自
+  // 未经类型约束的地方（JSON、存储、表单），传进来的是 undefined，
+  // 这里会抛出一个 `TypeError` —— 那是唯一一种**逃出本层错误契约**的失败：
+  // 调用方按 `CryptoError.code` 分支处理，拿到的却是一个普通 TypeError，
+  // 于是「口令不合法」被表现成一次崩溃。
+  if (typeof passphrase !== 'string') {
+    throw new CryptoError('invalid_params', `口令必须是字符串，收到 ${typeof passphrase}`)
+  }
+
   const normalized = passphrase.normalize('NFKC')
   if (normalized.length === 0) {
     // 零后端架构下「空口令」等价于「没有加密」，而用户极容易误操作成这样。

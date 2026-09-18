@@ -33,11 +33,23 @@ export {
 
 export { CryptoError, type CryptoErrorCode } from './errors'
 
+/**
+ * 原语层。`sealArchive` / `openArchive` 是「一次性加解密一份档案」的整包操作；
+ * 下面的分解原语供 `vault` 层重排使用（典型用法：换口令时只重做
+ * `createEnvelopeHeader` + `wrapDek`，`payload` 原样保留）。
+ */
 export {
   ENVELOPE_FORMAT,
   ENVELOPE_VERSION,
+  createEnvelopeHeader,
+  kdfParamsOf,
   openArchive,
+  openPayload,
+  parseEnvelopeFile,
   sealArchive,
+  sealPayload,
+  unwrapDek,
+  wrapDek,
   type EnvelopeKdf,
   type EnvelopeSealedBox,
   type EncryptedEnvelope,

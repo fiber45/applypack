@@ -10,3 +10,4 @@
 
 export * from './crypto/index'
 export * from './schema/index'
+export * from './vault/index'

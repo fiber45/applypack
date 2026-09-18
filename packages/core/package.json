@@ -7,7 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./crypto": "./src/crypto/index.ts",
-    "./schema": "./src/schema/index.ts"
+    "./schema": "./src/schema/index.ts",
+    "./vault": "./src/vault/index.ts"
   },
   "scripts": {
     "test": "vitest run",
