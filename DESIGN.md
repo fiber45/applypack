@@ -67,7 +67,7 @@
 | Web 端 | Vite + React + Tailwind | 静态产物，部署 GitHub Pages / Cloudflare Pages |
 | 扩展端 | **WXT** | MV3 生命周期坑太多，不自研脚手架 |
 | 数据 Schema | **JSON Resume** + 中文 ATS 字段扩展包 | 白拿生态，扩展包可反哺上游 |
-| 加密 | **libsodium-wrappers**（WASM）+ **hash-wasm**（Argon2id） | 永不自己实现密码学 |
+| 加密 | **libsodium-wrappers**（WASM）+ **hash-wasm**（Argon2id） | 永不自己实现密码学；AEAD 用 **XChaCha20-Poly1305**（见 ADR-9） |
 | 本地存储 | IndexedDB（Web 端）/ chrome.storage.local（扩展端） | 均只存密文 |
 | LLM 接入 | **Vercel AI SDK** | 厂商抽象 + 流式；**不引入 Agent 框架** |
 | 检索 | **MiniSearch**（BM25） | 范例池仅数百条，上向量库是负分 |
@@ -87,7 +87,7 @@ resume-copilot/
 ├─ packages/
 │  ├─ core/                  # 纯 TS，无 UI / 无框架依赖
 │  │  ├─ schema/             # JSON Resume + 中文 ATS 扩展字段
-│  │  ├─ crypto/             # Argon2id → KEK → DEK → AES-GCM
+│  │  ├─ crypto/             # Argon2id → KEK → DEK → XChaCha20-Poly1305
 │  │  ├─ vault/              # 密文库读写（存储层可替换）
 │  │  ├─ compile/            # LLM 编译器：经历 / JD → 结构化
 │  │  ├─ matching/           # 打分引擎：加权规则 + 理由生成
@@ -106,12 +106,27 @@ resume-copilot/
 ### 3.2 密钥与解锁
 
 ```
-口令 ──Argon2id(独立 salt)──► KEK ──unwrap──► DEK ──AES-GCM──► 密文记录
+口令 ──Argon2id(独立盐, m=64MiB/t=3/p=1)──► KEK ──封装──► DEK ──XChaCha20-Poly1305──► 密文记录
 ```
 
 - 密文副本同时存在于 Web 端 origin 与扩展 storage
 - **会话解锁**：每会话解锁一次，15 分钟无操作自动清除内存中的明文
 - **恢复路径唯一**：加密备份导出（`.vault` 文件 + 恢复码）。无服务端 ⇒ 无口令重置，这是必须写进 README 的已知限制
+
+**KDF 参数与取值依据。** 单独列表的原因：KDF 参数是整个系统里**唯一一处「调小一点就悄悄变弱、且没有任何功能会坏掉」**的地方。没有依据，它迟早会被「为了让测试跑快点」改成 8 MiB。
+
+| 参数 | 取值 | 依据 |
+|---|---|---|
+| 算法 | Argon2id | PHC 竞赛优胜者、RFC 9106 标准；内存硬，抗 GPU/ASIC 远强于 PBKDF2 |
+| 内存 m | 64 MiB | 高于 OWASP 的两档推荐（19 MiB / 47 MiB），对齐 RFC 9106 的内存受限档位。再往上（如 256 MiB）会让低端手机解锁卡顿 —— 而卡顿会促使**用户干脆不设口令**，那是比参数弱更糟的结果 |
+| 迭代 t | 3 | 与 RFC 9106 内存受限档一致，强于 libsodium `crypto_pwhash` 的 INTERACTIVE 档（t=2） |
+| 并行度 p | 1 | OWASP 各推荐档均为 1；p>1 抬高低端移动端的内存峰值与调度差异，浏览器场景收益低 |
+| 盐 | 16 字节，每条档案独立随机 | 同一口令在不同档案下派生出不同 KEK，一条泄漏不波及另一条 |
+| AEAD | XChaCha20-Poly1305 | 见 ADR-9 |
+
+实测耗时：本机 Node 22 约 250–350 ms，浏览器端同量级。
+
+**信封里的 KDF 参数必须按不可信输入校验。** 参数随文件走（自包含是刻意的），也就意味着它可以被任意构造。一个 `memoryKiB: 4194304` 的 `.vault` 文件能让浏览器在用户点「导入」那一刻尝试分配 4 GiB 内存。因此有硬上限：内存 ≤ 256 MiB、t ≤ 64、p ≤ 16，越界一律 `invalid_params`。
 
 ### 3.3 AI 管线（七步）
 
@@ -156,9 +171,19 @@ resume-copilot/
 | 6 | **不使用无头浏览器自动化** | Playwright 服务端代填 | 需服务端跑浏览器 + 需用户凭据 + 体积巨大 + 易被反自动化识别；「用户自己浏览器 + 主动触发」与「服务器代替操作」性质完全不同 |
 | 7 | **适配器优先 + 强制确认** | 纯启发式 / LLM 现场猜字段 | 兼顾准确率与覆盖率；LLM 猜字段需发送页面结构，可能与 B 级数据不出端冲突 |
 | 8 | **档案 schema 用严格模式**（未知字段报错） | `.passthrough()` 保留未知字段 ／ 默认 strip 静默丢弃 | 未知字段**没有级别**，因而无法参与「B 级不出端」判定 —— 一个混进来的 `contacts_backup` 就能绕过整条红线。passthrough 会把无级别的数据留在档案里，strip 会静默丢用户数据，两者都不可接受 |
+| 9 | **AEAD 用 XChaCha20-Poly1305** | AES-256-GCM（原选型）／改用 WebCrypto 实现 AES-GCM | 实现时实测：**libsodium.js 的 WASM 构建（含 `libsodium-wrappers-sumo`）不含 AES-256-GCM** —— `crypto_aead_aes256gcm_is_available` 在标准版里不存在、在 sumo 版里是 `undefined`。不是配置问题，是 wasm 没有 AES-NI、上游选择不编译。要用 AES-GCM 只能改走 WebCrypto，那要求 `core` 放弃「零全局依赖」、由 Web 端与扩展端各自注入原语实现 —— 多一整层间接，换来的只是「算法名字更眼熟」 |
 
 ADR-8 的代价要认领：**严格模式使「任何形状变更必须 bump `schemaVersion` 并写迁移函数」成为硬错误。**
 这是有意的 —— 它让「忘了写迁移」不可能被忽略，而不是靠约定。
+
+**ADR-9 的补充说明**：这个决策与最初的选型相反，所以要说清「为什么换掉的不只是可选项、而是更坏的那个」。
+XChaCha20-Poly1305 的 192-bit nonce 允许**随机生成 nonce 而无需计数器**；AES-GCM 只有 96-bit，
+同一密钥下随机使用约 2^32 条记录后就有碰撞风险 —— 而 **nonce 复用对 GCM 是灾难性的**（泄漏明文异或，且认证密钥可被恢复）。
+选一个「随机就安全」的算法，等于消掉了一整类事故。代价是偏离 NIST 标准算法的合规叙事
+（Poly1305 是 RFC 8439，XChaCha20 是 libsodium 的 IETF 草案扩展，TLS 1.3 里已是标准套件），对个人求职工具可接受。
+
+**这次实测还留下一条更一般的教训**：技术选型表里写下的**具体算法名**，在写下的那一刻只是假设。
+「用 libsodium」是决定，「用 AES-GCM」是决定之上的推论 —— 推论需要被验证，而验证的时机是写第一行实现代码时，不是上线前。
 
 **红线**：永远不做「批量一键投递」。加了它，项目会从"求职辅助工具"变成"自动投递爬虫"。
 

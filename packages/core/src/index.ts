@@ -8,4 +8,5 @@
  * @see AGENTS.md §3
  */
 
+export * from './crypto/index'
 export * from './schema/index'

@@ -30,12 +30,27 @@ T1.1 schema → T1.2 加密 → T2.1 编译 → T2.2 匹配 → T3.2 硬校验 �
 > 清单之外另加了两处编译期守卫（`level-spec.guard.ts` / `no-runtime-deps.guard.ts`），
 > 把「漏标字段会编译失败」「core 里不存在 document / window / process」从注释变成持续可验证的断言。
 
-### T1.2 加密原语
+### T1.2 加密原语 ✅ 已完成
 产出：`core/crypto/`
-- [ ] Argon2id(WASM) 派生 KEK → 封装随机 DEK → AES-GCM 加密记录
-- [ ] 参数（内存 / 迭代 / 并行度）写进代码注释与文档，并说明取值依据
-- [ ] 错误口令解密必须抛错，**不得返回部分数据**
-- [ ] 有已知测试向量
+- [x] Argon2id(WASM) 派生 KEK → 封装随机 DEK → AEAD 加密记录
+- [x] 参数（内存 / 迭代 / 并行度）写进代码注释与文档，并说明取值依据
+- [x] 错误口令解密必须抛错，**不得返回部分数据**
+- [x] 有已知测试向量
+
+> 59 条断言，与 T1.1 合计 105 条；`pnpm test` 与 `pnpm typecheck` 均通过。
+>
+> **一处与原计划的偏离（已记入 DESIGN.md ADR-9）**：AEAD 由 AES-256-GCM 改为
+> **XChaCha20-Poly1305**。原因是实测发现 libsodium.js 的 WASM 构建（含 sumo）
+> 完全不包含 AES-256-GCM —— 不是配置问题。要用它只能改走 WebCrypto，
+> 那会要求 `core` 放弃零全局依赖。附带收益：192-bit nonce 让「随机 nonce」天然安全。
+>
+> **测试向量的两个独立来源**：`argon2-cffi`（Argon2 官方 C 实现）与 `PyNaCl`
+> （libsodium 官方 C 实现），由 `scripts/gen-vectors.py` 生成，**不经人手转录**。
+> 另用 `@noble/ciphers`（独立纯 JS 实现）做双向互解，验证算法本身而非传参。
+>
+> 清单之外另加：KDF 参数硬上限（信封参数来自外部文件，按不可信输入校验）、
+> 信封头部用 AAD 认证绑定（改一个字节就解不开）、`decryption_failed` 与
+> `invalid_params` / `unsupported_version` / `malformed_envelope` 的错误码区分。
 
 ### T1.3 密文库 + 加密备份
 产出：`core/vault/`

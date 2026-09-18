@@ -6,6 +6,7 @@
   "description": "纯 TS 业务核心：schema / 加密 / 密文库 / 编译 / 匹配 / 改写 / 校验 / 渲染。零 DOM、零框架依赖。",
   "exports": {
     ".": "./src/index.ts",
+    "./crypto": "./src/crypto/index.ts",
     "./schema": "./src/schema/index.ts"
   },
   "scripts": {
@@ -14,9 +15,12 @@
     "typecheck": "tsc"
   },
   "dependencies": {
+    "hash-wasm": "4.12.0",
+    "libsodium-wrappers": "0.8.4",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@noble/ciphers": "^2.4.0",
     "vitest": "^5.0.1"
   }
 }
