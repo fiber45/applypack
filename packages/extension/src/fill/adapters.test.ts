@@ -109,6 +109,8 @@ describe('导出面（想加新出口，必须先改这里）', () => {
       'asDomDocument',
       'buildFillPlan',
       'buildPreview',
+      'buildUploadNotices',
+      'classifyUploadSlot',
       'createConfirmation',
       'detectPlatformAdapter',
       'extractFieldFeatures',

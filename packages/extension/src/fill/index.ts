@@ -45,3 +45,9 @@ export {
   type GapItem,
 } from './preview'
 export { applyFillPlan, type ApplyResult, type FillWriter } from './apply'
+export {
+  buildUploadNotices,
+  classifyUploadSlot,
+  type UploadSlotKind,
+  type UploadSlotNotice,
+} from './upload-slots'

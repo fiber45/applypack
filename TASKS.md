@@ -1178,8 +1178,30 @@ T1.1 schema → T1.2 加密 → T2.1 编译 → T2.2 匹配 → T3.2 硬校验 �
 >   变异：拆摘要校验 / 反转 blocking 投影 / 忽略批准集合，三变体全被杀。
 
 ### T5.4 上传槽位提示（不代传）
-- [ ] 断言代码中不存在对 `input[type=file]` 的写入
-- [ ] 槽位识别用例表：`english|_en|英文` → EN，`chinese|_cn|中文` → CN，`biling|中英|双语` → Bilingual
+- [x] 断言代码中不存在对 `input[type=file]` 的写入
+- [x] 槽位识别用例表：`english|_en|英文` → EN，`chinese|_cn|中文` → CN，`biling|中英|双语` → Bilingual
+
+> **T5.4 交付记录**（`packages/extension/src/fill/upload-slots.ts`，14 断言）：
+>
+> - **「不代填」是结构性质，不是约定。** 三条证据钉死：① `isFillableKind('file')`
+>   为 false，fill 通道对 file 特征关死；② file-only 表单满配批准也零写入
+>   （file 特征只能落成 file-slot，而 file-slot 没有批准资格，T5.3 的门）；③
+>   raw 源码扫描（vitest `?raw` 导入）钉 `.setValue(` 的调用点只出现在
+>   `apply.ts` —— 谁在别处开第二条写 DOM 的路，这里先红。笨判据不漏报。
+> - **槽位词汇与 core 交付命名是同一套**：分类结果就是 `ViewSuffix`
+>   （EN / CN / Bilingual），建议文件名直接 `deliveryFileName(DEFAULT_FILE_STEM, kind)`
+>   ——「看到提示就知道该拖哪个文件」不靠记忆，靠词汇表共享。
+>   认不出的槽位 `unrecognized` 且**不给**建议文件名（猜一个比不给更糟）。
+> - **用例表逐条落地**（大小写不敏感，key 与标签合成一个信号池）：
+>   双语信号压过英/中（一个槽位不会同时是两份）；EN 与 CN 信号并存 =
+>   歧义不猜（与填充层 ambiguous 同一立场）；无信号 → unrecognized。
+>   已声明缺口：连字符变体（`resume-en`）不在表内 —— 扩表必须先有
+>   真实站点槽位样本，不许凭空加模式。
+> - `buildUploadNotices` 对 file-slot 与 features 按 key 对账，对不上号
+>   （两份数据不是同一次提取的）抛错而不是静默跳过。
+> - 测试数：extension 111 → **125**（fill 79）。全仓 `turbo typecheck test
+>   build` **9/9 绿**（core 658 / extension 125 / web 43 / evals 11）。
+>   变异：双语优先级降位 / 歧义改猜 CN / 建议文件名后缀错位，三变体全被杀。
 
 ### T5.5 提交前审核摘要
 - [ ] 只拦截一次，放行由用户点击
