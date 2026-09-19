@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "applypack · 投递包",
+  "version": "0.1.0",
+  "description": "一份档案，投遍所有网申。数据不出浏览器：本扩展不申请任何 API 权限，也没有后台进程。",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content-script.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -1314,6 +1314,37 @@ T1.1 schema → T1.2 加密 → T2.1 编译 → T2.2 匹配 → T3.2 硬校验 �
 >   能看到页面加载、BYOK 的边界、验证的是数据流不是可信构建）。配图/GIF 未录，
 >   文中已声明，欢迎 PR。
 
+## M7 · 扩展可装载（先 A 后 B 的 A）
+
+> **fiber 拍板（2026-09-19）：先 A 后 B。** A = 扩展跑起来，本人当第一批真实用户，
+> 真实反馈直接喂给 B（Web 端补全「档案编辑 / 生成 / 预览 / 导出」四块 UI）。
+> B 是新里程碑（M8），M7 收官后再拆。
+
+### T7.1 内容脚本骨架（manifest + 扫描 + 构建产物）✅ 已完成
+产出：`packages/extension/{public/manifest.json, vite.config.ts, scripts/check-dist.mjs, src/content/{scan.ts, entry.ts}}`
+- [x] MV3 manifest **结构断言**：无 `permissions` / `host_permissions` / `background` 键 —— 零 API 权限、零后台常驻进程，「数据不出浏览器」从清单开始是结构事实
+- [x] `scanPage` 纯逻辑：北森快照 → 检出适配器 + 特征数 + 版本对齐；页面自申报版本 ≠ 适配器版本 → `staleAdapter`（平台改版的第一现场，在扫描层可见）
+- [x] `boot` 接线：`asDomDocument` 正控守卫 + 内置适配器一次性注册
+- [x] vite IIFE 构建 → `dist/{manifest.json, content-script.js}`；`check-dist` 断言产物形状（无 `chrome.*`、无 `fetch`/XHR/WebSocket —— 骨架承诺零网络原语，加了先红灯）
+
+> 7 条断言（extension 154→161），构建任务加入 turbo（9→10）。变异三杀：
+> staleAdapter 恒 false / featureCount 恒 0 / manifest 加 `permissions: []`，各自 1 红。
+> 扫描结果挂 `globalThis.__APPLYPACK_SCAN__`，DevTools Console 可读 —— T7.4 冒烟的载体。
+> 产物构建期钉「零网络原语」：依赖图混进带网络调用的包时，测试全绿也会在 check-dist 红。
+
+### T7.2 预览确认面板（overlay UI）
+- [ ] 扫描命中 → 解锁档案（T1.5 vault）→ `buildFillPlan` → `buildPreview` → overlay 逐项展示（自动填 / 启发式分列，T5.5 的分列语义）
+- [ ] 用户批准 → `createConfirmation` → `applyFillPlan` 真写入（凭据票制接线，T5.3）；无批准零写入在真实 DOM 上复验
+- [ ] 档案未解锁时面板明确说「先解锁」，不出现半残状态
+
+### T7.3 提交前摘要 + 回填接线
+- [ ] 提交按钮旁展示 `SubmitSummary`（`createSubmitGate` / `releaseSubmit` 接线，T5.5：只拦一次）
+- [ ] 提交时刻表单值 → `detectBackfillCandidates` → 提案 UI（冲突二选一、不自动覆盖，T5.6）
+
+### T7.4 装载与真页冒烟
+- [ ] README「装载」一节：chrome://extensions → load unpacked → 验证步骤（与 privacy-verification 串起来）
+- [ ] 真实页面（或快照页）手工冒烟记录写进本文件
+
 ---
 
 ## 不需要做的事
