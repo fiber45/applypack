@@ -1,0 +1,53 @@
+# 部署 packages/web 的静态产物到 GitHub Pages。
+#
+# 前提（一次性手工步骤）：仓库 Settings → Pages → Build and deployment →
+# Source 选 **GitHub Actions**。不选这个，本 workflow 会因权限被拒。
+#
+# 产物是纯静态文件（`base: './'` 相对路径，见 packages/web/vite.config.ts），
+# 放在子路径 https://fiber45.github.io/applypack/ 下无需任何改造。
+# 页面的 CSP（connect-src 'none'）写在 index.html 的 meta 里，随产物走，
+# 不依赖托管方响应头 —— 换任何静态托管都同样成立。
+
+name: deploy-pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @applypack/web build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: packages/web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1291,10 +1291,28 @@ T1.1 schema → T1.2 加密 → T2.1 编译 → T2.2 匹配 → T3.2 硬校验 �
 
 ## M6 · 交付
 
-- [ ] T6.1 `README.md`：以第 7 节的七句话开头 + 已知限制（尤其"忘记口令数据就没了"）
-- [ ] T6.2 在线 Demo（静态站部署，点开链接即可看）
-- [ ] T6.3 `CONTRIBUTING.md` + 术语表贡献指南（`knowledge/` 是唯一对社区开放的模块）
-- [ ] T6.4 隐私自证说明：打开 DevTools Network 面板的验证步骤（配图或 GIF）
+- [x] T6.1 `README.md`：以第 7 节的七句话开头 + 已知限制（尤其"忘记口令数据就没了"）
+- [x] T6.2 在线 Demo（静态站部署，点开链接即可看）
+- [x] T6.3 `CONTRIBUTING.md` + 术语表贡献指南（`knowledge/` 是唯一对社区开放的模块）
+- [x] T6.4 隐私自证说明：打开 DevTools Network 面板的验证步骤（配图或 GIF）
+
+> **M6 交付记录（2026-09-19）**
+>
+> - **T6.1**：README 重排 —— DESIGN §7 的七句话逐字置顶；断言总数与功能一览更新到
+>   M5 收官状态（866 条：core 658 / extension 154 / web 43 / evals 11）；已知限制新增
+>   「英文 60s 档轻样本诚实报缺」（指向 targets.ts 拍板注记）。
+> - **T6.2**：Demo 发布在 https://applypack-demo.app.workbuddy.host/ （静态产物
+>   `packages/web/dist`，发布后已验证可达）；长期路径为
+>   `.github/workflows/deploy-pages.yml` —— 需要 fiber 在仓库 Settings → Pages →
+>   Source 选 **GitHub Actions** 一次（此步只能账号本人操作，未做则 Actions 会静默不跑）。
+>   CSP 在页面 meta 里随产物走，不依赖托管方。
+> - **T6.3**：`CONTRIBUTING.md` 落了四条贡献规则（条目可证伪 / 宁缺毋滥 / 不收真实
+>   用户数据 / 条目落到断言），动词表迁移路径写明「迁移当日 core 断言一条不改全绿」。
+>   `knowledge/` 目录本身仍未建 —— 建目录不是本任务的事，等第一批词条来的时候再建。
+> - **T6.4**：`docs/privacy-verification.md` 四步验证（Network 全程监听 / Console 手发
+>   fetch 证明 CSP 拒收 / Offline 断网可用 / curl 核对 CSP 原文）+ 诚实划界（托管方
+>   能看到页面加载、BYOK 的边界、验证的是数据流不是可信构建）。配图/GIF 未录，
+>   文中已声明，欢迎 PR。
 
 ---
 
