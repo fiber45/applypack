@@ -61,6 +61,38 @@ export function createDomFillWriter(doc: DomDocument): FillWriter {
   }
 }
 
+/**
+ * T7.3 —— 提交时刻的表单值读取。与写入器同源（`extractKeyedElements`），
+ * 读和写看到的是同一批 key —— 检测回填候选时不会出现「写进了页面、
+ * 读回来却找不到」的缝。所有 key 都有值（没填的是空串，不是 undefined），
+ * 消费方（detectBackfillCandidates）的 trim/空白判断因此不需要先判空。
+ * radio 组读勾中成员的 value，没有勾选读空串。
+ */
+export function readPageValues(doc: DomDocument): Record<string, string> {
+  const values: Record<string, string> = {}
+  for (const { key, element } of extractKeyedElements(doc)) {
+    if (isRadioRepresentative(element)) {
+      const name = element.getAttribute('name')
+      const members =
+        name === null
+          ? []
+          : doc.querySelectorAll(`input[type="radio"][name="${cssEscape(name)}"]`)
+      let checkedValue = ''
+      for (const member of members) {
+        if ((member as DomElement & { checked?: boolean }).checked === true) {
+          checkedValue = member.getAttribute('value') ?? ''
+          break
+        }
+      }
+      values[key] = checkedValue
+      continue
+    }
+    const raw = (element as DomElement & { value?: unknown }).value
+    values[key] = typeof raw === 'string' ? raw : ''
+  }
+  return values
+}
+
 function isRadioRepresentative(element: DomElement): boolean {
   return (
     element.tagName.toUpperCase() === 'INPUT' &&

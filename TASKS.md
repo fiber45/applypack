@@ -1353,8 +1353,21 @@ T1.1 schema → T1.2 加密 → T2.1 编译 → T2.2 匹配 → T3.2 硬校验 �
 >   写入通道，无批准零写入已在 jsdom 逐字段复验（空批准 → 全 DOM 值不变）。
 
 ### T7.3 提交前摘要 + 回填接线
-- [ ] 提交按钮旁展示 `SubmitSummary`（`createSubmitGate` / `releaseSubmit` 接线，T5.5：只拦一次）
-- [ ] 提交时刻表单值 → `detectBackfillCandidates` → 提案 UI（冲突二选一、不自动覆盖，T5.6）
+- [x] 提交按钮旁展示 `SubmitSummary`（`createSubmitGate` / `releaseSubmit` 接线，T5.5：只拦一次）
+- [x] 提交时刻表单值 → `detectBackfillCandidates` → 提案 UI（冲突二选一、不自动覆盖，T5.6）
+
+> **T7.3 交付注记**（9 断言，extension 172→181）：
+> - panel 状态机新增 `submit-review` / `submit-released` 两态，三个既有
+>   部件的一次接线，不发明新语义：`openSubmitReview` = 摘要
+>   （T5.5 投影）+ 提案（T5.6 分诊，outbid/ambiguous 永不进）+ 门
+>   （T5.5 创建即拦截）；`releaseSubmitFlow` = 放行 + 决策一次点击，
+>   凭据在流程内当场验真（`verifySubmitRelease`），第二次放行没有入口。
+> - `readPageValues`（writer.ts）与写入器同源（`extractKeyedElements`）：
+>   读和写看到同一批 key，所有 key 都有值（没填 = 空串不是 undefined）。
+> - `submit-released.archiveAfter` 带出回填后的档案；保存
+>   （vault.saveArchive）与提交按钮事件接线归 T7.4 胶水。
+> - 变异四杀：只拦 closed / 决策被丢弃 / 伪造凭据绕过真门（4 红，
+>   品牌校验当场炸）/ 提案恒空（2 红）。
 
 ### T7.4 装载与真页冒烟
 - [ ] README「装载」一节：chrome://extensions → load unpacked → 验证步骤（与 privacy-verification 串起来）

@@ -27,9 +27,24 @@
  */
 
 import type { ArchiveV1 } from '../../../core/src/schema/index'
-import { buildPreview, type FillItem, type FillPreview } from '../fill/preview'
+import { buildPreview, createConfirmation, type FillItem, type FillPreview } from '../fill/preview'
 import { applyFillPlan, type ApplyResult, type FillWriter } from '../fill/apply'
-import { createConfirmation } from '../fill/preview'
+import {
+  buildSubmitSummary,
+  createSubmitGate,
+  releaseSubmit,
+  verifySubmitRelease,
+  type SubmitGate,
+  type SubmitRelease,
+  type SubmitSummary,
+} from '../fill/submit-review'
+import {
+  applyBackfill,
+  buildBackfillProposal,
+  detectBackfillCandidates,
+  type BackfillDecision,
+  type BackfillProposal,
+} from '../fill/backfill'
 import { buildFillPlan } from '../fill/plan'
 import type { DomDocument } from '../fill/dom'
 import type { PageScan } from './scan'
@@ -57,6 +72,22 @@ export type PanelState =
       readonly kind: 'applied'
       readonly digest: string
       readonly result: ApplyResult
+      /** 原预览 —— T7.3 提交拦截时摘要与回填检测都从这里取口径。 */
+      readonly preview: FillPreview
+    }
+  | {
+      readonly kind: 'submit-review'
+      readonly summary: SubmitSummary
+      readonly proposal: BackfillProposal
+      readonly gate: SubmitGate
+      /** 拦截时刻的档案 —— releaseSubmitFlow 在它之上应用回填决策。 */
+      readonly archive: ArchiveV1
+    }
+  | {
+      readonly kind: 'submit-released'
+      readonly release: SubmitRelease
+      /** 回填决策应用后的档案（空决策 = 与拦截时刻逐字节一致）。 */
+      readonly archiveAfter: ArchiveV1
     }
 
 /** 解锁接缝：口令进来，档案出去；口令错返回 null（不区分错误种类）。 */
@@ -137,7 +168,7 @@ export function approveFill(
   }
   const confirmation = createConfirmation(state.preview, approvedKeys)
   const result = applyFillPlan(state.preview.plan, confirmation, writer)
-  return { kind: 'applied', digest: state.preview.digest, result }
+  return { kind: 'applied', digest: state.preview.digest, result, preview: state.preview }
 }
 
 /**
@@ -157,4 +188,66 @@ export function splitPreviewColumns(preview: FillPreview): {
     else heuristicGuessed.push(item)
   }
   return { autoFilled, heuristicGuessed }
+}
+
+/**
+ * T7.3 —— 用户去点页面自己的提交按钮的那一刻（DESIGN 第 7 节第七句话）。
+ *
+ * 拦截一次做完三件事，全部是既有部件的接线，不发明新语义：
+ * 1. 摘要 = `buildSubmitSummary(原预览)`（T5.5 分列 + emptyRequired 投影）；
+ * 2. 提案 = `detectBackfillCandidates(计划, 提交时刻表单值)` →
+ *    `buildBackfillProposal(候选, 档案)`（T5.6，outbid/ambiguous 永不进）；
+ * 3. 门 = `createSubmitGate(摘要)`（T5.5：创建即拦截，放行一次性）。
+ *
+ * 只有 `applied` 能拦截 —— 没写完就拦截是半成品流程。拦截携带拦截
+ * 时刻的档案：releaseSubmitFlow 在它之上应用决策，档案若在拦截后被
+ * 改过，`applyBackfill` 的指纹校验会把整次放行炸回去。
+ */
+export function openSubmitReview(
+  state: PanelState,
+  archive: ArchiveV1,
+  pageValues: Readonly<Record<string, string>>,
+): PanelState {
+  if (state.kind !== 'applied') {
+    throw new Error(
+      `openSubmitReview：状态是 ${state.kind} —— 只有填完（applied）才有提交可拦`,
+    )
+  }
+  const summary = buildSubmitSummary(state.preview)
+  const candidates = detectBackfillCandidates(state.preview.plan, pageValues)
+  const proposal = buildBackfillProposal(candidates, archive)
+  return {
+    kind: 'submit-review',
+    summary,
+    proposal,
+    gate: createSubmitGate(summary),
+    archive,
+  }
+}
+
+/**
+ * 放行 + 回填决策，一次点击一并交给流程。
+ *
+ * - **放行一次性**：第二次调用在 `releaseSubmit` 里炸（T5.5 的钉）；
+ * - **决策与提案不配套就拒绝**（T5.6 的钉），不静默忽略；
+ * - **空决策 = 档案逐字节不变**：不静默保存，冲突保留原值；
+ * - 凭据在流程内走完验收仪式（`verifySubmitRelease`）—— 放行的
+ *   拿出来的票当场验真，而不是留给下游半信半疑。
+ *
+ * 产出 `submit-released`：`archiveAfter` 是回填后的档案，保存
+ * （vault.saveArchive）是入口胶水的事 —— 状态机不知道密文的存在。
+ */
+export function releaseSubmitFlow(
+  state: PanelState,
+  decisions: readonly BackfillDecision[],
+): PanelState {
+  if (state.kind !== 'submit-review') {
+    throw new Error(
+      `releaseSubmitFlow：状态是 ${state.kind} —— 只有 submit-review 能放行，且只有一次`,
+    )
+  }
+  const release = releaseSubmit(state.gate)
+  verifySubmitRelease(release, state.summary)
+  const archiveAfter = applyBackfill(state.archive, state.proposal, decisions)
+  return { kind: 'submit-released', release, archiveAfter }
 }
