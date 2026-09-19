@@ -27,9 +27,11 @@ export {
 } from './gate'
 export { compareNumeric, extractNumbers, numberSet, untraceableNumbers } from './numbers'
 export {
+  locateNumbers,
   multiViewParity,
   textsParity,
   type MultiViewParityReport,
+  type NumberLocation,
   type ParityReport,
 } from './parity'
 export { isGroundedIn, normalizeWhitespace } from './trace'

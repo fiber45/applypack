@@ -78,3 +78,36 @@ export function multiViewParity(
   }
   return { ok: true, onlyInLeft: [], onlyInRight: [], pair: null }
 }
+
+export interface NumberLocation {
+  readonly number: string
+  /** 含这个数字的文本，按输入顺序、逐字保留（不截断） */
+  readonly texts: readonly string[]
+}
+
+/**
+ * 「这些数字出现在哪里」—— 把一条数字级的判据翻译成一行行可以动手改的文本。
+ *
+ * ## 为什么需要它
+ *
+ * `textsParity` 的失败信息是 `onlyInRight: ['6']`。看到它的人能做的事情只有
+ * 一件：把两份文档从头读到尾，找哪个地方多写了个 6。**这等于没有报错。**
+ * 这条不匹配的真实成因往往是极小的：中版写「全国大学英语六级考试」、
+ * 英版写「CET-6」，同一个事实，一个带数字一个不带。
+ *
+ * 所以失败信息必须落到**行**上。这不是文案打磨，是「报错理由写错，
+ * 用户会被引向错误的处置方向」这条原则的又一次应用（见 T3.3 的三条绳子）。
+ *
+ * 只报命中该数字的文本，不做任何归因 —— 归因（是术语不一致还是真编了数字）
+ * 需要语义，而这一层拒绝理解语义。
+ */
+export function locateNumbers(
+  texts: readonly string[],
+  numbers: readonly string[],
+): readonly NumberLocation[] {
+  return numbers.map((number) => ({
+    number,
+    texts: texts.filter((text) => extractNumbers(text).includes(number)),
+  }))
+}
+
