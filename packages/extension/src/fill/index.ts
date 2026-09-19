@@ -34,3 +34,14 @@ export {
   type FillPlan,
   type FillPlanItem,
 } from './plan'
+export {
+  buildPreview,
+  createConfirmation,
+  type FileSlotItem,
+  type FillConfirmation,
+  type FillItem,
+  type FillPreview,
+  type FillPreviewCounts,
+  type GapItem,
+} from './preview'
+export { applyFillPlan, type ApplyResult, type FillWriter } from './apply'

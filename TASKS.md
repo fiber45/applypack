@@ -1147,8 +1147,35 @@ T1.1 schema → T1.2 加密 → T2.1 编译 → T2.2 匹配 → T3.2 硬校验 �
 >   变异：错选择器 / 删 radio kind / 废 radio 提取，三变体全被杀。
 
 ### T5.3 预览确认与缺口语义
-- [ ] 任何写入之前必须经过用户确认
-- [ ] `blocking: true` 的必填项在填充阶段即时提示（否则用户走到提交才发现要回头重填）
+- [x] 任何写入之前必须经过用户确认
+- [x] `blocking: true` 的必填项在填充阶段即时提示（否则用户走到提交才发现要回头重填）
+
+> **T5.3 交付记录**（`packages/extension/src/fill/preview.ts` + `apply.ts`，23 断言）：
+>
+> - **「确认」是一张票，不是一个布尔值。** `createConfirmation` 产出与预览内容
+>   摘要（digest）绑定的凭据：digest 只覆盖 fill 条目的 key/path/value/来源/顺序，
+>   对每个值、每一项、顺序都敏感；缺口与槽位不进摘要（不可批的东西不占摘要位）。
+>   计划在预览之后变过（页面变了、重算过）→ 旧票作废，重新预览。
+> - **写入门是运行时 + 编译期双重的。** 从计划到 writer 只有 `applyFillPlan`
+>   一条路，路上三道检查：凭据形状正控（不裸 cast）→ 摘要对得上 →
+>   批的每一项都在当前计划里（凭据被裁剪/拼过也拒绝）。凭据带模块私有
+>   symbol 品牌，裸对象字面量在编译期就造不出来（`@ts-expect-error` 钉住）。
+> - **`FillWriter` 是最小平台接缝**（一个 `setValue` 方法）：MV3 内容脚本给
+>   真实现，测试给间谍，谁也不 import 谁。门只保证「没确认过的值永远
+>   到不了 writer」，writer 落到页面还是落进测试与门无关。
+> - **blocking 缺口即时提示**（DESIGN 11.2 例外条款）：`buildPreview` 把
+>   blocking 缺口作为一等公民带出（`blockingGaps` + `requiresAttention`），
+>   且是 plan 的忠实投影（双向序列化相等断言）。空批准合法 —— 用户看完
+>   预览一个都不批，apply 零写入，「一个都不填」被尊重。
+> - gap / file-slot / checkbox 没有 approve 的资格：`createConfirmation`
+>   对越权 key 直接抛错而不是静默忽略 —— 「允许了不存在的东西」会让门变松。
+> - 实现期被自家测试抓到两个测试 bug：digest 前缀断言口径错（分隔符是
+>   `\u0002` 非 `:`）；「裁剪凭据」伪造场景选的 key 恰好是合法 fill，
+>   改用 gap key 才真正走越权路径。运行期还修了 `declare const brand`
+>   不产出运行时值的坑（改 `= Symbol()`）。
+> - 测试数：extension 88 → **111**（fill 65）。全仓 `turbo typecheck test build`
+>   **9/9 绿**（core 658 / extension 111 / web 43 / evals 11）。
+>   变异：拆摘要校验 / 反转 blocking 投影 / 忽略批准集合，三变体全被杀。
 
 ### T5.4 上传槽位提示（不代传）
 - [ ] 断言代码中不存在对 `input[type=file]` 的写入
