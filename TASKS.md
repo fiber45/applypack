@@ -1204,8 +1204,37 @@ T1.1 schema → T1.2 加密 → T2.1 编译 → T2.2 匹配 → T3.2 硬校验 �
 >   变异：双语优先级降位 / 歧义改猜 CN / 建议文件名后缀错位，三变体全被杀。
 
 ### T5.5 提交前审核摘要
-- [ ] 只拦截一次，放行由用户点击
-- [ ] 摘要区分「自动填的」与「启发式猜的」
+- [x] 只拦截一次，放行由用户点击
+- [x] 摘要区分「自动填的」与「启发式猜的」
+
+> **T5.5 交付记录**（`packages/extension/src/fill/submit-review.ts`，11 断言）：
+>
+> - **摘要按 `source` 分列，且是投影不是重算**（DESIGN 11.4 关键设计）：
+>   adapter 来源进 `autoFilled`（全部来自档案），heuristic 来源进
+>   `heuristicGuessed`（请重点核对，UI 高亮）。两列互斥、并集恰好等于
+>   全部 fill，双向序列化投影钉死 —— 混列、漏列都红。「仍为空的必填」
+>   直接复用 preview 的 `blockingGaps`（T5.3 的口径只有一处），
+>   上传槽位与 digest 原样透传。
+> - **只拦截一次的执行点**：创建门（`createSubmitGate`）即拦截，每份
+>   计划内容一次；`releaseSubmit` 是用户点击在纯逻辑层的化身，一次性
+>   消费 —— 第二次调用抛错（那不是「再确认」，是 UI 双重提交 bug）。
+>   DESIGN 11.4 的两个反面教材各落一颗钉：拦截后不放行 = 阻碍 →
+>   门不带任何自动继续的路径；拦截后静默放行 = 欺骗 → 本模块不存在
+>   绕过 `releaseSubmit` 产出合法凭据的路径（品牌 symbol 模块私有 +
+>   门由 WeakMap 登记，伪造对象查无此门）。
+> - **放行凭据与摘要 digest 绑定**：`verifySubmitRelease` 是消费方
+>   （提交事件放行点）的验收 —— 拦截之后页面变过 → digest 对不上 →
+>   旧凭据作废，重新拦截。过期凭据与伪造凭据死在同一条路上。
+> - 已声明缺口：DESIGN 11.4 摘要第四行「本次新录入」依赖 T5.6 回填
+>   闭环的手填捕获数据，不预置占位字段 —— 数据源存在之前先给形状，
+>   就是给猜留门。
+> - 过程中 typecheck 抓到一个测试抓不到的真问题：`unique symbol`
+>   不能索引 `Record<string, unknown>`，形状校验改为类型谓词守卫
+>   （`isSubmitReleaseShape`，与 apply.ts 同款）。
+> - 测试数：extension 125 → **136**（fill 90）。全仓 `turbo typecheck
+>   test build` **9/9 绿**（core 658 / extension 136 / web 43 / evals 11）。
+>   变异：分列对调 / 删二次放行抛错 / 删 digest 校验、删形状校验，
+>   四变体全被杀。
 
 ### T5.6 回填闭环
 - [ ] 手填新字段 → 询问 → 写回档案并重建索引
