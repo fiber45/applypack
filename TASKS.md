@@ -1333,9 +1333,24 @@ T1.1 schema → T1.2 加密 → T2.1 编译 → T2.2 匹配 → T3.2 硬校验 �
 > 产物构建期钉「零网络原语」：依赖图混进带网络调用的包时，测试全绿也会在 check-dist 红。
 
 ### T7.2 预览确认面板（overlay UI）
-- [ ] 扫描命中 → 解锁档案（T1.5 vault）→ `buildFillPlan` → `buildPreview` → overlay 逐项展示（自动填 / 启发式分列，T5.5 的分列语义）
-- [ ] 用户批准 → `createConfirmation` → `applyFillPlan` 真写入（凭据票制接线，T5.3）；无批准零写入在真实 DOM 上复验
-- [ ] 档案未解锁时面板明确说「先解锁」，不出现半残状态
+- [x] 扫描命中 → 解锁档案（T1.5 vault）→ `buildFillPlan` → `buildPreview` → overlay 逐项展示（自动填 / 启发式分列，T5.5 的分列语义）
+- [x] 用户批准 → `createConfirmation` → `applyFillPlan` 真写入（凭据票制接线，T5.3）；无批准零写入在真实 DOM 上复验
+- [x] 档案未解锁时面板明确说「先解锁」，不出现半残状态
+
+> **T7.2 交付注记**（11 断言，extension 161→172）：
+> - `content/panel.ts` 是状态机（closed / locked / unlock-failed / ready /
+>   applied）：locked 与 unlock-failed **结构上不携带 preview**（判别联合
+>   分枝决定字段）——「不半残」是类型事实不是渲染纪律；`applied` 是终态，
+>   二次批准没有入口。解锁是接缝 `UnlockArchive`（口令 → 档案或 null），
+>   真 vault 接线在 T7.3/T7.4 的口令 UI 里是一行调用。
+> - `content/writer.ts` 是 `FillWriter` 的真实 DOM 实现：key 寻址来自
+>   features.ts 重构出的 `extractKeyedElements`（与特征提取**同一次遍历**，
+>   不复刻 key 规则 —— 复刻的结局是值写进错误元素）；radio 组写「勾中
+>   匹配成员、取消其余」的组语义。entry 胶水挂 `__APPLYPACK_PANEL__`
+>   （初始 locked）供 T7.4 冒烟。
+> - **边界**：overlay 的视觉渲染（真正把分列画进页面的 DOM/CSS）在
+>   T7.3 面板细化里 —— 本任务交付的是渲染层唯一能吃的数据形状与
+>   写入通道，无批准零写入已在 jsdom 逐字段复验（空批准 → 全 DOM 值不变）。
 
 ### T7.3 提交前摘要 + 回填接线
 - [ ] 提交按钮旁展示 `SubmitSummary`（`createSubmitGate` / `releaseSubmit` 接线，T5.5：只拦一次）

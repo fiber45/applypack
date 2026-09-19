@@ -78,8 +78,25 @@ export interface FieldFeature {
  * 在第一个成员的 DOM 位置出现 —— 用户面对的是一道单选题，
  * 不是 N 个控件；组内后续成员不再单独产出特征。
  */
-export function extractFieldFeatures(doc: DomDocument): readonly FieldFeature[] {
+/**
+ * key → 元素的配对。T7.2 写入器的寻址来源：**与特征提取同一次遍历产出**，
+ * 不是在 writer 里复刻 key 推导规则 —— 复刻意味着规则改一处漏一处，
+ * 值会写进错误的元素。这里只有一个真相。
+ */
+export interface KeyedElement {
+  readonly key: string
+  /** radio 组 = 组内第一个成员（组的代表，与特征同源）。 */
+  readonly element: DomElement
+}
+
+interface Extraction {
+  readonly features: readonly FieldFeature[]
+  readonly keyed: readonly KeyedElement[]
+}
+
+function extractAll(doc: DomDocument): Extraction {
   const features: FieldFeature[] = []
+  const keyed: KeyedElement[] = []
   const seenKeys = new Map<string, number>()
   const emittedRadioGroups = new Set<string>()
 
@@ -98,9 +115,19 @@ export function extractFieldFeatures(doc: DomDocument): readonly FieldFeature[] 
     seenKeys.set(feature.key, count + 1)
     const key = count === 0 ? feature.key : `${feature.key}~${count + 1}`
     features.push({ ...feature, key })
+    keyed.push({ key, element })
   }
 
-  return features
+  return { features, keyed }
+}
+
+export function extractFieldFeatures(doc: DomDocument): readonly FieldFeature[] {
+  return extractAll(doc).features
+}
+
+/** 供 T7.2 写入器按 key 寻址元素 —— 与特征提取同一次遍历，不可能脱节。 */
+export function extractKeyedElements(doc: DomDocument): readonly KeyedElement[] {
+  return extractAll(doc).keyed
 }
 
 function isRadioInput(element: DomElement): boolean {
@@ -322,7 +349,8 @@ function pushText(texts: string[], raw: string | null): void {
  * 但 `label[for="..."]` 的值直接拼进选择器，遇到引号就是注入点 ——
  * 不赌上游，统一转义。CSSOM 的 `CSS.escape` 在 `lib: ["ES2023"]` 下
  * 不存在（零 DOM 类型），这里手写最小版：反斜杠与引号前加反斜杠。
+ * T7.2 写入器拼 radio 组选择器时同样要用 —— 导出而不是复刻。
  */
-function cssEscape(value: string): string {
+export function cssEscape(value: string): string {
   return value.replace(/[\\"]/g, '\\$&')
 }

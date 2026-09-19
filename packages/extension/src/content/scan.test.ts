@@ -64,11 +64,13 @@ describe('T7.1 scanPage —— 内容脚本与引擎之间那条缝', () => {
   })
 })
 
-describe('T7.1 boot —— 入口接线', () => {
-  it('默认注册路径：注册表清空后 boot 一次即检出（证明入口自己会注册内置适配器）', () => {
+describe('T7.1/T7.2 boot —— 入口接线', () => {
+  it('默认注册路径：boot 一次即检出；面板初始为 locked（档案未解锁，诚实而非半残）', () => {
     resetPlatformAdaptersForTests()
-    const scan = boot(parseHtmlFixture(BEISEN_SNAPSHOT_HTML))
+    const { scan, panel } = boot(parseHtmlFixture(BEISEN_SNAPSHOT_HTML))
     expect(scan.platform).toBe('beisen')
+    expect(panel.kind).toBe('locked')
+    expect(Object.hasOwn(panel, 'preview')).toBe(false)
   })
 
   it('非 Document 形状 → asDomDocument 正控守卫抛 TypeError（不是等到三层后的 undefined）', () => {
