@@ -46,6 +46,18 @@ export {
 } from './preview'
 export { applyFillPlan, type ApplyResult, type FillWriter } from './apply'
 export {
+  BACKFILL_PATHS,
+  applyBackfill,
+  buildBackfillProposal,
+  detectBackfillCandidates,
+  type BackfillCandidate,
+  type BackfillDecision,
+  type BackfillItem,
+  type BackfillProposal,
+  type BackfillSource,
+  type BackfillTarget,
+} from './backfill'
+export {
   buildSubmitSummary,
   createSubmitGate,
   releaseSubmit,

@@ -1237,8 +1237,49 @@ T1.1 schema → T1.2 加密 → T2.1 编译 → T2.2 匹配 → T3.2 硬校验 �
 >   四变体全被杀。
 
 ### T5.6 回填闭环
-- [ ] 手填新字段 → 询问 → 写回档案并重建索引
-- [ ] 与已有值冲突时不自动覆盖，交给用户选
+- [x] 手填新字段 → 询问 → 写回档案并重建索引
+- [x] 与已有值冲突时不自动覆盖，交给用户选
+
+> **T5.6 交付记录**（`packages/extension/src/fill/backfill.ts`，18 断言）：
+>
+> - **三段式，检测与写回之间没有直达路径**：`detectBackfillCandidates`
+>   （对比提交时刻表单值与计划：改了已填字段 edited / 填了缺口字段
+>   manual）→ `buildBackfillProposal`（按档案现值分诊 new / conflict，
+>   恰好相同 = same 无信息量不进 proposal）→ `applyBackfill`（只写
+>   decisions 里显式点头的条目）。空决策 = 档案逐字节不变 ——
+>   「不静默保存」是结构，不是习惯。
+> - **「冲突不自动覆盖」的另一半**：conflict 条目没有决策 = 保留档案
+>   值，keep 是缺省不是 replace；展示两个值是 UI 的事，「选了才覆盖」
+>   在纯逻辑层就是「决策列表里没有它就不写」。
+> - **outbid / ambiguous 缺口不回填**（测试逼出的语义边界）：这两种
+>   缺口的 path 归属已被计划判为不可信 —— 「紧急联系人电话」被词汇表
+>   误配上 `basics.contact.phone`，手填值回填进 phone 就是污染档案。
+>   「填错比不填更糟」的回填方向镜像是**存错比不存更糟**。no-catalog-match
+>   → customFields（schema 唯一开放槽位，级别策略默认 B 级），靠
+>   「询问 + 显式批准」把关；验证码这类一次性字段用户硬要批准是用户
+>   的选择 —— 已声明权衡，不加「判断字段值不值得存」的启发式。
+> - **写回白名单与目录对称**：`BACKFILL_PATHS` 与 `FILL_CATALOG` 的
+>   path 集合由断言钉死双向相等 —— 目录加了条目忘了写回通道（或
+>   反向冒出平行词汇表），红灯亮在回填测试里，而不是亮在用户「填了
+>   却不记住」的体验里。父容器缺失（`education` 为空时的
+>   `education.0.endDate`）抛错并把话说全：该补的是整条教育经历。
+> - **指纹绑定检测时刻的档案**（`serializeArchive`，同步纯函数）：
+>   apply 时重新比对，检测之后 web 端改过档案 → 旧 proposal 作废。
+>   与 T5.3 确认凭据、T5.5 放行凭据同一套机制，只是这里的「世界」
+>   是档案而不是页面。决策 id 越权（不在 proposal 里）抛错不静默忽略。
+> - **「重建索引」的可执行判定**：写回后的档案用 `FILL_CATALOG` 的
+>   `read` 能读回页面值 —— 下一次 `buildFillPlan` 自动填上它。产出
+>   必过严格 schema round-trip（`deserialize(serialize(draft))`）：
+>   手填值写不进档案形状（日期格式、薪资「25k」）在这里炸，而不是
+>   等保存密文时才炸。
+> - 测试数：extension 136 → **154**（fill 108）。全仓 `turbo typecheck
+>   test build` **9/9 绿**（core 658 / extension 154 / web 43 / evals 11）。
+>   变异：忽略决策全写入 / 删 outbid 排除 / 删指纹校验 / 越权静默忽略，
+>   四变体全被杀。typecheck 两次抓到测试没暴露的真问题
+>   （`basics.location` 可选、突变误插 fill 分支）。
+> - 平台接缝（留给确认 UI）：拿到 `pageValues`（提交时刻表单值）→
+>   detect → proposal 交用户勾选 → decisions → `applyBackfill` →
+>   `Vault.saveArchive`（payload 换、DEK 不动，DESIGN 11.3 增量录入）。
 
 ---
 

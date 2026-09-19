@@ -102,11 +102,14 @@ describe('导出面（想加新出口，必须先改这里）', () => {
     // 注意：`Object.keys` 只含值导出 —— 类型导出在运行时不存在，
     // 所以这条断言管的是「函数与数据出口」，类型面由 typecheck 管。
     expect(Object.keys(fillModule).sort()).toEqual([
+      'BACKFILL_PATHS',
       'BUILTIN_PLATFORM_ADAPTERS',
       'FILL_CATALOG',
       'MOCKBOARD_ADAPTER',
+      'applyBackfill',
       'applyFillPlan',
       'asDomDocument',
+      'buildBackfillProposal',
       'buildFillPlan',
       'buildPreview',
       'buildSubmitSummary',
@@ -114,6 +117,7 @@ describe('导出面（想加新出口，必须先改这里）', () => {
       'classifyUploadSlot',
       'createConfirmation',
       'createSubmitGate',
+      'detectBackfillCandidates',
       'detectPlatformAdapter',
       'extractFieldFeatures',
       'isFillableKind',
