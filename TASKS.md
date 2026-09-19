@@ -1370,8 +1370,23 @@ T1.1 schema → T1.2 加密 → T2.1 编译 → T2.2 匹配 → T3.2 硬校验 �
 >   品牌校验当场炸）/ 提案恒空（2 红）。
 
 ### T7.4 装载与真页冒烟
-- [ ] README「装载」一节：chrome://extensions → load unpacked → 验证步骤（与 privacy-verification 串起来）
-- [ ] 真实页面（或快照页）手工冒烟记录写进本文件
+- [x] README「装载」一节：chrome://extensions → load unpacked → 验证步骤（与 privacy-verification 串起来）
+- [x] 真实页面（或快照页）手工冒烟记录写进本文件
+
+> **T7.4 交付注记**（4 断言，extension 181→185）：
+> - `content/glue.ts`：`persistArchiveAfterRelease` —— 保存胶水做成
+>   纯函数：只有 `submit-released` 状态能持久化（其他状态传入即抛，
+>   「填一半就存」在类型与运行时两头都不可能）；保存器注入
+>   （`vault.saveArchive.bind(vault)` 在 entry 递入），内容脚本不碰密文；
+>   **保存器失败原样上抛**——吞掉保存失败 = 用户以为存了其实没存。
+> - 全链冒烟固化为 `content/smoke.test.ts`：北森真实快照页，boot
+>   （检出 beisen、版本对齐、面板初始 locked）→ ready → 批准写入 →
+>   提交拦截（分列 + 提案）→ 放行 → 持久化，一竿子到底。这不是单元
+>   测试的重复，是接线测试：任何一环改签名，这里第一个红。
+> - **真实浏览器装载冒烟**：步骤在 README「浏览器扩展装载」一节
+>   （Console 读 `__APPLYPACK_SCAN__` / `__APPLYPACK_PANEL__`），
+>   需要装真 Chrome 的操作者执行 —— **待办**，不阻塞 M8 纯逻辑层。
+> - 变异两杀：任何状态都能存（1 红）/ 保存失败被吞（1 红）。
 
 ---
 

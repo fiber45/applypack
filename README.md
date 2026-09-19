@@ -63,6 +63,23 @@ pnpm build       # 全量构建（web 产物在 packages/web/dist/）
 
 需要 Node ≥ 22 与 pnpm 12。
 
+## 浏览器扩展装载（M7）
+
+填表辅助（北森 / Moka / 大易）以 Chrome 扩展（MV3）形式运行，**零 API 权限、零后台常驻**——manifest 里没有 `permissions` / `host_permissions` / `background` 键，这是测试钉住的结构事实。
+
+```bash
+pnpm --filter @applypack/extension build   # 产物在 packages/extension/dist/
+```
+
+装载步骤：
+
+1. 打开 `chrome://extensions`，右上角开启「开发者模式」；
+2. 点「加载已解压的扩展程序」，选择 `packages/extension/dist/` 目录；
+3. 打开任意页面，DevTools Console 输入 `__APPLYPACK_SCAN__` —— 命中表单时能看到 `platform`（beisen / moka / dayee）、字段特征数与版本对齐状态；`__APPLYPACK_PANEL__` 是面板当前状态（未解锁时诚实显示 `locked`）；
+4. **隐私顺带自证**：按 [`docs/privacy-verification.md`](./docs/privacy-verification.md) 的四步走一遍——扩展的数据流与 Web 端同一套验证；`dist/` 产物在构建期就被钉住「零网络原语」（`fetch` / XHR / WebSocket 出现在产物即构建失败）。
+
+> 扩展当前只读不写：扫描与面板状态机已就绪，解锁档案的口令 UI 与 overlay 视觉渲染是后续任务（见 TASKS.md M7/M8）。
+
 ## 适配器与快照维护
 
 自动填充按「**适配器优先，启发式兜底**」工作（DESIGN ADR-7）：命中已知平台用人工核对过的精确选择器，没命中或选择器扑空（平台改版）则逐字段降级回启发式——降级是静默的，字段照常走匹配流程。
