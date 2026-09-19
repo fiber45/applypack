@@ -1388,6 +1388,49 @@ T1.1 schema → T1.2 加密 → T2.1 编译 → T2.2 匹配 → T3.2 硬校验 �
 >   需要装真 Chrome 的操作者执行 —— **待办**，不阻塞 M8 纯逻辑层。
 > - 变异两杀：任何状态都能存（1 红）/ 保存失败被吞（1 红）。
 
+## M8 · Web 四块 UI（先 A 后 B 的 B）
+
+> 「档案编辑 / 生成 / 预览 / 导出」四块把 demo 变成能自助用的东西。
+> 全部跑在浏览器里，core 的引擎已就绪 —— M8 只做接线与 UI 状态，
+> **不发明新语义**：校验归 schema、加密归 vault、渲染归 render。
+> 编辑起点是示例档案（可清空重录）；导入 `.vault` 是恢复真实档案的正门。
+
+### T8.1 档案编辑器
+- [x] 表单编辑 `ArchiveV1` 关键字段（基本信息 / 联系方式 / 教育 / 经历）→ 严格 schema 校验实时反馈
+- [x] 非法输入（薪资「25k」、缺 `schemaVersion`）→ 显示校验错误，**不产生已保存的假象**（错误状态与已保存状态是两个互斥的状态）
+- [x] 合法编辑 → `serializeArchive`/`deserializeArchive` round-trip 逐字节成立
+
+### T8.2 vault 会话（口令 / 解锁 / 密文文件）
+- [x] 新建库（口令）→ 解锁态；锁定 → 口令重开；**错口令 → 解锁失败状态，档案不出现在界面上**
+- [x] 保存 = `Vault.saveArchive`（payload 换、DEK 不动）；导出 `toVaultText` 下载 / 导入文本重开 round-trip
+- [x] 会话状态机（locked/unlock-failed/unlocked）与 T7.2 扩展面板的解锁接缝同构，不发明第二种解锁语义
+
+### T8.3 生成预览
+- [x] 档案 → `buildDeliveryPackage`（render + intro）→ 页面内预览：HTML 简历 + 中英自述文本
+- [x] 预览内容**逐条来自档案**（无占位符文本）；档案变更后预览随编辑保存而更新，编辑未保存不更新
+
+### T8.4 导出交付
+- [x] PDF 下载接线（复用 `features/delivery` 的浏览器渲染）+ 自述文本下载；文件名走 `deliveryFileName`
+- [x] 下载内容可被 T4a 的验证器核对（PDF 文本层与档案事实一致）
+
+> **M8 交付注记**（web 43→64 断言，全仓 918）：
+> - 四块各有一个**零 DOM 纯逻辑模型**（node 环境测，jsdom 跨 realm 会
+>   拒收 libsodium 的 Uint8Array —— 测试环境假象，非实现缺陷；纯逻辑
+>   在 node 验与 core 同一惯例）+ 一个 jsdom 组件层（编辑器三态徽标、
+>   App tab 接线）。
+> - T8.1：`invalid` 分支没有 archive 字段（半成品存不进密文是类型
+>   事实）；clean/dirty 判定是 `serializeArchive` 逐字节比较（改回
+>   原样 = clean，不是「有输入就 dirty」的狼来了）。
+> - T8.2：导入校验复用 core `parseEnvelopeFile`（校验发生在最靠近
+>   数据的地方）；导出文本断言不含任何档案明文。
+> - T8.3：预览只吃**已保存**档案；幻觉数字检测的 resumeTexts 取自
+>   同一份交付包的文本层。变异逼出断言三改：lang 属性钉双语归属、
+>   `mockRejectedValueOnce` 区分「失败即停」与「失败继续」。
+> - T8.4：文件名单一产地 `deliveryFileName`；`renderPdf` 注入（浏览器
+>   接线 `renderViewToBlob`），渲染失败整次交付上抛、失败后 sink 零调用。
+> - **手工冒烟待办**：真浏览器里创建库→编辑→保存→预览→下载 PDF 的
+>   全流程（jsdom 无法覆盖 PDF 渲染与下载），Demo 站即可执行。
+
 ---
 
 ## 不需要做的事
