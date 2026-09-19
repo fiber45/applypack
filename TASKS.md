@@ -1059,9 +1059,63 @@ T1.1 schema → T1.2 加密 → T2.1 编译 → T2.2 匹配 → T3.2 硬校验 �
 
 ## M5 · 扩展与填充
 
-### T5.1 内容脚本 + 适配器注册表
-- [ ] 单测跑在保存的 HTML fixture 上，**不依赖真实站点**
-- [ ] 字段匹配（启发式兜底）有准确率断言
+### T5.1 内容脚本 + 适配器注册表 ✅ 已完成（纯逻辑层）
+产出：`packages/extension/src/fill/`（7 个模块 + 30 条断言）
+- [x] 单测跑在保存的 HTML fixture 上，**不依赖真实站点**
+- [x] 字段匹配（启发式兜底）有准确率断言
+
+> 沿用 T1.5 的模式：**纯逻辑层先行，平台接缝留最小接口**。
+> 整层对 DOM 只读不写、输入输出全是纯数据，`environment: 'node'` 不变 ——
+> 真实 DOM 与 jsdom 只需满足 `dom.ts` 的最小结构接口
+> （`querySelectorAll` / `getAttribute` / `textContent` / `getElementById`），
+> 谁也不 import 谁。WXT 骨架与 `chrome.*` 接线属 T5.3 及以后；
+> `tsconfig` 的 `types: []` 让 `chrome` 全局不可写。
+>
+> **分层（每层只对一件事负责，各有各的判据）：**
+>
+> | 模块 | 职责 | 关键判据 |
+> |---|---|---|
+> | `features.ts` | 页面 → 字段特征（文案线索/类型/必填） | label[for] 与 aria 两种来源、hidden/submit 排除、key 唯一 |
+> | `catalog.ts` | 可填字段词汇表（14 条：path/level/同义词/类型闸门/取值） | level 与 core 分级策略逐条一致（`fieldPolicyFor`） |
+> | `heuristics.ts` | 评分器：标签 10/6 · name 7/4 · placeholder 5/3，类型硬闸门 | tel 输入框不可能接 email（正控 + 负控） |
+> | `adapters.ts` | 注册表 + mockboard 虚构适配器（T5.2 换真实平台） | 选择器扑空 = 静默降级，不报错 |
+> | `plan.ts` | 组装 `FillPlan` 判别联合（fill / gap / file-slot） | 见下 |
+>
+> **主判据是逐字段 ground truth 双向相等**（不是准确率百分比）：
+> 13 个期望填的字段 key→path 逐项相等、5 个期望缺口的原因逐项相等 ——
+> 多填（错配）与少填（漏配）都红。项目立场「填错比不填更糟」
+> 在断言里的形状是：**歧义 = 一个都不填**（两个同标签同类型字段打平 → 全部 gap）。
+>
+> **缺口语义五分**（T5.3 的预览 UI 直接消费）：
+> `no-catalog-match`（页面字段不认识）/ `no-value`（目录认得但档案是空的 ——
+> DESIGN 11 的真缺口）/ `ambiguous` / `outbid`（有信号但输给了别的字段，
+> 如「紧急联系人电话」对上手机）/ `option-mismatch`（档案有值但下拉选项里没有）。
+> `blocking` 随 gap 走：required 字段的缺口即时标记（DESIGN 11.2 例外条款）。
+>
+> **实现期抓到的两个真问题（都被自家判据逼出来）：**
+>
+> 1. **短英文同义词的子串误报**：`name` ⊆ `candidate_name` 让「纯启发式救不了」
+>    的测试字段（适配器对照组）被启发式意外填上。修法：≤4 字符的纯 ASCII
+>    同义词只做精确匹配 —— 英文没有中文「字面包含 ≈ 语义相关」的性质。
+>    中文同义词保留包含匹配（`手机` ⊆ `手机号` 是有价值的信号）。
+> 2. **精确同义词三方打平**：fixture 里「手机号」与两个「联系电话」都是
+>    `basics.contact.phone` 的精确同义（各 10 分）→ 三方歧义 → 主字段也没得填。
+>    这不是评分器的 bug，是 fixture 没有表达「主字段 vs 备用字段」的文案梯度；
+>    备用电话改为「备用联系电话」（6 分）后语义恢复。ground truth 是人工
+>    推演的，推演和实现错哪个并不总是一眼可见 —— 让它们对质的正是断言。
+>
+> **导出面断言**（`Object.keys(fill)` 快照）是 T5.4「不代填 file」的第一道闸：
+> 将来谁把写 DOM 的原语引进 fill 层，导出面先红。`file-slot` 分支从第一天
+> 就存在于计划里（上传槽位只提示不代填，红线 5）；checkbox（同意条款）
+> 不出现在任何分支 —— 用户必须自己勾。
+>
+> **fixture 以 TS 字符串模块存放**（不是 `.html` 文件）：extension 的
+> `types: []` 下 `node:fs` 类型不可用，且 fixture 进 diff 后「改一个标签、
+> 期望跟着红」的耦合是显式的。T5.2 的真实站点快照沿用此格式。
+>
+> 测试数：extension 46 → **76**（fill 30）。全仓 `turbo typecheck test build`
+> **9/9 绿**（core 658 / extension 76 / web 43 / evals 11）。
+> 变异验证：去掉包含匹配 / 歧义改为填第一个 / 删除 checkbox 排除，三变体全被杀。
 
 ### T5.2 前 3 个适配器
 - [ ] 每个适配器一份快照 fixture + 字段匹配率断言
