@@ -686,7 +686,7 @@ T1.1 schema → T1.2 加密 → T2.1 编译 → T2.2 匹配 → T3.2 硬校验 �
 产出：`core/render/`
 - [x] 断言姓名 / 学校 / 公司 / 日期齐全且顺序正确
 - [x] 该断言是「ATS 可解析」的唯一可信证据
-- [ ] **未完成：PDF 生成与 pdfjs 反向抽取** —— 需要浏览器环境，属 Web 端（见下）
+- [x] PDF 生成与 pdfjs 反向抽取 —— 见下方 **T4a-PDF**（属 `packages/web`，选 react-pdf）
 
 > 21 条断言，与前面合计 349 条；`pnpm test` 与 `pnpm typecheck` 均通过。
 > **到这一条为止，`§0` 的竖切链路 `T1.1 → T1.2 → T2.1 → T2.2 → T3.2 → T4a` 全部打通。**
@@ -716,6 +716,47 @@ T1.1 schema → T1.2 加密 → T2.1 编译 → T2.2 匹配 → T3.2 硬校验 �
 > **渲染产物是纯字符串，所以「ATS 可解析」这件事在 CI 上可验证，不需要跑浏览器。**
 > 这是零 DOM 约束带来的一处真实收益，不是妥协 —— 一个需要浏览器才能跑的
 > ATS 断言，会在第一次超时时被 `skip` 掉。
+
+### T4a-PDF PDF 生成与 pdfjs 反向抽取 ✅ 已完成（packages/web）
+产出：`web/src/features/delivery/`（document / fonts / pdf-text / verify / render-node / render-browser + delivery.test.ts）+ `scripts/fetch-fonts.mjs`
+- [x] PDF 生成：`@react-pdf/renderer`，**同一 `DocumentModel` 的第二个渲染后端**（不是 HTML 转 PDF）
+- [x] pdfjs 反向抽取：**PDF 文本层 == `PackageView.texts`（HTML 的 ATS 文本），逐字符**，忽略全部空白与已声明的装饰（`●`）
+- [x] 装饰机制活着：`●` 出现次数精确等于要点行数；未声明的多余字符必须为空
+- [x] 页数估算第一次被实测对照：campus 三版实测 1 / 1 / 2 页；**「估算只可能高报」从读代码确认升级为断言**（maximal 估算 2 ≥ 实测 2）
+- [x] 双语拼页在成品上精确：`bilingual == en + cn`（与 `package.ts` 同一条判据，输入换成产物）
+
+> **web 包合计 43 条**（T2.3 的 18 + 本节 25）；全仓 `turbo typecheck test build` 9/9 绿
+> （core 658 / extension 46 / evals 11 / web 43）。
+>
+> **① 选型先 spike 后实现。** 打印 CSS 出局的理由（TASKS.md:762）：产物字节不进 JS，
+> 文件名控不了、页数量不了、回归在 CI 里不可见；`html2canvas` 一类出局：栅格化毁掉文本层。
+> spike（`renderToBuffer` + pdfjs 抽取，中文不走样、字体子集 11 KB）验通后才写模板。
+>
+> **② 字体：内嵌，钉哈希，不入库。** Noto Sans SC 静态 TTF 两个字重（400/600，
+> PDF 不能合成伪粗体），21 MB 由 `fetch-fonts.mjs` 按 SHA-256 在 pretest/prebuild 拉取，
+> OFL 声明随字体落盘。浏览器与 Node 各给一种 src 形态（`fonts.ts`），幂等登记。
+>
+> **③ 本轮抓到的五个真问题（每个都改变了实现）：**
+>
+> | # | 症状 | 根因 | 修法 |
+> |---|---|---|---|
+> | 1 | 标记 `•` 抽回来变成 `·`，被判成「未声明的多余字符」 | Noto Sans SC 把 `•`(U+2022)、`·`(U+00B7)、`･`(U+30FB) 编成**同一字形**（glyph 1375），子集化后 ToUnicode 只能映射回一个码点；正文里真 `·`（meta 分隔符）一出现，标记就丢失了自己的身份 | 标记改用 `●`(U+25CF)——它在字体里有**独占字形**（glyph 1000）。选装饰字符前必须查反向映射唯一 |
+> | 2 | pdfjs 抽取永远挂起，beforeAll 超时，看着像「渲染慢」 | pdfjs 6 默认构建的 `MessageHandler` 用 `Promise.try`（ES2025），Node 22 没有；报错发生在消息层，主 Promise 不 resolve | 走 **legacy 构建**（`pdfjs-dist/legacy/build/pdf.mjs`，自带 core-js polyfill），不打全局补丁 |
+> | 3 | 成功的抽取在 `finally` 里被顶成 `TypeError` | pdfjs 6 的 `destroy()` 在 **loading task** 上，文档代理上只有 `cleanup()` | 对正确的对象调 destroy |
+> | 4 | 测试全绿但 typecheck 红 | react-pdf 4.9 没有 `<Document/Page hyphenationCallback>` prop，连字符要在 `Font.registerHyphenationCallback` 全局设 | 移入 `fonts.ts` 登记处；**两道门都要跑**（关连字符是文本层判据的前提：连字符 `-` 不在装饰集里） |
+> | 5 | 「估算 685.8 / 762.5 pt（90%）」却测得 2 页 | **测试自己的 bug**：`rendered` Map 以 `view.name` 为 key，两个 fixture 的视图同名（`Resume_CN` 等），campus 的渲染被 maximal 覆盖，页数断言全在跑错的产物 | key 改为视图对象本身。这条没被任何断言抓住，是被「估算远小于容量却溢出」的矛盾逼出来的 —— 交叉证据值得 信 |
+>
+> 另有一处 core 侧补齐：`entryLines` 加入 `core/render` 导出面 —— react-pdf 把组件
+> 内部错误吞成 `null`，探测时只有把它单独 import 才能看到真错。三个消费者
+> （HTML 渲染 / 页数估算 / PDF 模板）从此共用一个产地，「PDF 少印一行」没有可发生的地方。
+>
+> **④ 变异验证（判据先证明自己会红）：** M1 删掉要点标记 → 装饰计数红；
+> M2 双语版颠倒中英顺序 → 3 处红（逐字符比对 / 拼页等式）。
+>
+> **⑤ 判据的已知缺口（写下来而不是藏起来）：** 排版引擎在空格处断行会吞掉那个空格，
+> 所以按空白归一化后，「`Campus Marketplace` 被渲染成 `CampusMarketplace`」能通过
+> 主判据。补偿在 core 侧：文本的空格正确性由 T4a 本层的断言守着。逐条比对。
+
 
 ### T4b 三版投递包 ✅ 已完成
 产出：`core/render/package.ts` + `layout.ts` + `paginate.ts`（附 `verify/parity.ts` 的一处新增）
@@ -1011,9 +1052,8 @@ T1.1 schema → T1.2 加密 → T2.1 编译 → T2.2 匹配 → T3.2 硬校验 �
 >   先自由写再校验 ⇒「不许编数字」变成一句提示词。
 > - **`intro_en@500w` / `@3min` 尚未被端到端跑过**：八个档位都在表里、合成器与校验器
 >   与档位无关（断言证明 `facts` 不随档位变化），但没有针对长档的用例。
-> - **T4a 的 PDF/pdfjs 部分**仍属 `packages/web` —— 该包已在 T2.3 建起来
->   （Vite + React + Tailwind + jsdom 测试环境），所以这一条现在的阻塞点只剩
->   「选 react-pdf 还是打印 CSS」这一个决定了。
+> - **T4a 的 PDF/pdfjs 部分**已完成（T4a-PDF 一节）：选型定为 react-pdf，
+>   判据「PDF 文本层 == HTML 的 ATS 文本」已在成品上逐字符成立。
 
 ---
 

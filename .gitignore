@@ -18,6 +18,10 @@ coverage/
 *.vault
 *.vault.json
 
+# 交付 PDF 的内嵌 CJK 字体（21 MB，由 scripts/fetch-fonts.mjs 按钉住的哈希拉取）
+# NOTICE.txt 不忽略：授权声明必须跟着字体一起被部署
+packages/web/public/fonts/*.ttf
+
 # 编辑器与系统
 .DS_Store
 Thumbs.db

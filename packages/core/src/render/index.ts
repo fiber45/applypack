@@ -70,6 +70,12 @@ export {
 } from './layout'
 export {
   buildDocumentModel,
+  // 一条条目在页面上占的全部文本行。**三个消费者共用它**：HTML 渲染、
+  // 页数估算、以及 Web 端的 PDF 模板（T4a 补齐的那一半）。
+  // 它当初被刻意做成公开的单一产地，就是为了让「PDF 少印了一行」这类漂移
+  // 没有可以发生的地方 —— 所以 T4a 把它加进导出面，而不是在 PDF 模板里
+  // 再拼一次 `keywordLine + bullets`。
+  entryLines,
   pickLang,
   type BuildDocumentOptions,
   type ContactLine,

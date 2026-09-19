@@ -1,0 +1,12 @@
+本目录下的字体文件由 packages/web/scripts/fetch-fonts.mjs 拉取，不入版本库。
+
+字体：Noto Sans SC（Regular 400 / SemiBold 600）
+版权：Copyright 2014-2024 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+      基于 Source Han Sans，由 Google 改名为 Noto Sans SC。
+许可：SIL Open Font License 1.1 — https://openfontlicense.org/
+来源：https://cdn.jsdelivr.net/npm/@expo-google-fonts/noto-sans-sc@0.4.3
+用途：简历 PDF 的内嵌字体。OFL 允许内嵌进文档与再分发。
+
+许可证全文见 https://openfontlicense.org/open-font-license-official-text/
+（本项目不复制正文，只给出来源与许可标识；若你要再分发这些字体本身，
+请连同许可证全文一起分发。）
