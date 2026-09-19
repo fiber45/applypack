@@ -34,7 +34,31 @@ export interface DocumentEntry {
   readonly heading: string
   /** 次要信息（时间、地点），按显示顺序 */
   readonly meta: readonly string[]
+  /**
+   * 关键词行：`推荐系统 · 协同过滤`。**已拼好的一条线**，不是数组。
+   *
+   * 为什么单独一个字段，而不是像第一版那样把它 `unshift` 进 `bullets`：
+   * 它进 `bullets` 之后，任何「这一条要点能不能说出口」的下游都得把它当成
+   * 一条正常要点 —— 自我介绍因此会念出「At Campus Marketplace Recommender,
+   * I 推荐系统 · 协同过滤.」这种不是句子的话。**一个为 ATS 的子串匹配而拼的
+   * 标签串，不是一条可以说出来的事实。** 分开存，下游才有得选。
+   *
+   * 空串表示这一条没有关键词行。渲染与页数估算都走 `entryLines()`，
+   * 两处不会各自漂移。
+   */
+  readonly keywordLine: string
   readonly bullets: readonly string[]
+}
+
+/**
+ * 这一条在页面上占的**全部**文本行，按渲染顺序。
+ *
+ * HTML 渲染与页数估算**必须**共用它：两处各拼一次的话，页数会与实际排版
+ * 漂移，而漂移的症状是「估算说一页、导出来两页」—— 一条只在用户手里
+ * 才出现的错。
+ */
+export function entryLines(entry: DocumentEntry): readonly string[] {
+  return entry.keywordLine === '' ? entry.bullets : [entry.keywordLine, ...entry.bullets]
 }
 
 export interface DocumentSection {
@@ -187,6 +211,7 @@ function buildEntries(
         meta: [formatRange(entry.startDate, entry.endDate, lang), str(entry.location)].filter(
           (part) => part !== '',
         ),
+        keywordLine: '',
         bullets,
       })
       return
@@ -199,7 +224,8 @@ function buildEntries(
         meta: [formatRange(entry.startDate, entry.endDate, lang)].filter((part) => part !== ''),
         // 技术关键词单独成行而不是拼进标题：ATS 的关键词匹配是子串级的，
         // 拼进标题会让「推荐系统」与「Campus Recommender」粘成一个长串。
-        bullets: keywords.length === 0 ? bullets : [keywords.join(' · '), ...bullets],
+        keywordLine: keywords.join(' · '),
+        bullets,
       })
       return
     }
@@ -214,15 +240,21 @@ function buildEntries(
         meta: [formatRange(entry.startDate, entry.endDate, lang), str(entry.gpa)].filter(
           (part) => part !== '',
         ),
+        keywordLine: '',
         bullets,
       })
       return
     }
 
     if (sectionId === 'skills') {
+      // 技能节的 `keywords` 与项目节**不是一回事**：项目节的关键词是标签串
+      // （拼成一条线，不可朗读），技能节的每个关键词是一个「会什么」，
+      // 逐条成行、可以念（`My Languages include Python, SQL`）。所以这里
+      // 放进 `bullets` 而不是 `keywordLine` —— 两者的下游处置不同。
       entries.push({
         heading: pickLang(entry.name, lang),
         meta: [],
+        keywordLine: '',
         bullets: asStrings(entry.keywords),
       })
       return
@@ -232,6 +264,7 @@ function buildEntries(
       entries.push({
         heading: pickLang(entry.language, lang),
         meta: [str(entry.fluency), str(entry.score)].filter((part) => part !== ''),
+        keywordLine: '',
         bullets: [],
       })
       return
@@ -243,6 +276,7 @@ function buildEntries(
         meta: [str(entry.date).replace('-', '.'), str(entry.awarder)].filter(
           (part) => part !== '',
         ),
+        keywordLine: '',
         bullets: [],
       })
       return
@@ -254,6 +288,7 @@ function buildEntries(
         meta: [str(entry.date).replace('-', '.'), str(entry.issuer), str(entry.score)].filter(
           (part) => part !== '',
         ),
+        keywordLine: '',
         bullets: [],
       })
     }

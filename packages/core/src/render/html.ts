@@ -29,7 +29,7 @@
  */
 
 import { escapeHtml as escape } from './escape'
-import type { DocumentEntry, DocumentModel, DocumentSection } from './model'
+import { entryLines, type DocumentEntry, type DocumentModel, type DocumentSection } from './model'
 
 /**
  * 被禁止的 **CSS 声明**。**这不是风格偏好，是正确性约束** ——
@@ -138,9 +138,10 @@ function renderEntry(entry: DocumentEntry): string {
   if (entry.meta.length > 0) {
     parts.push(`<p class="meta">${escape(entry.meta.join(' · '))}</p>`)
   }
-  if (entry.bullets.length > 0) {
+  const lines = entryLines(entry)
+  if (lines.length > 0) {
     parts.push('<ul>')
-    for (const bullet of entry.bullets) parts.push(`<li>${escape(bullet)}</li>`)
+    for (const line of lines) parts.push(`<li>${escape(line)}</li>`)
     parts.push('</ul>')
   }
   parts.push('</div>')

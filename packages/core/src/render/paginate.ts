@@ -36,7 +36,7 @@
  */
 
 import { MM_PER_PT, type BlockKind, type LayoutSpec, CAMPUS_LAYOUT } from './layout'
-import type { DocumentModel } from './model'
+import { entryLines, type DocumentModel } from './model'
 
 /**
  * 全角（宽）字符的码点区间。
@@ -184,9 +184,10 @@ export function layoutBlocks(model: DocumentModel, layout: LayoutSpec): readonly
     for (const entry of section.entries) {
       push('entryHeading', entry.heading)
       if (entry.meta.length > 0) push('entryMeta', entry.meta.join(' · '))
-      if (entry.bullets.length > 0) {
+      const lines = entryLines(entry)
+      if (lines.length > 0) {
         push('listGap', '')
-        for (const bullet of entry.bullets) push('bullet', bullet)
+        for (const line of lines) push('bullet', line)
       }
       push('entryGap', '')
     }
