@@ -11,7 +11,8 @@
  * T4a 的全部验收标准建立在**「阅读顺序 == DOM 顺序」**这个前提上。
  * 一旦引入分栏，PDF 的文本层顺序就取决于渲染引擎的阅读顺序推断，
  * 而那件事没有一个简历工具扛得住。所以：**单栏、无绝对定位、无表格布局**。
- * 禁止清单见 `FORBIDDEN_LAYOUT_PATTERNS`，T4c 会照着它写断言。
+ * 禁止清单见 `FORBIDDEN_CSS_DECLARATIONS` / `FORBIDDEN_MARKUP`，
+ * 执行者是 `format.ts` 的 `scanForbiddenLayout`（T4c 挂在三份产物上跑）。
  *
  * ## 交给打印引擎的那一半：`@page`
  *
@@ -31,21 +32,64 @@ import { escapeHtml as escape } from './escape'
 import type { DocumentEntry, DocumentModel, DocumentSection } from './model'
 
 /**
- * 被禁止的排版手段。**这不是风格偏好，是正确性约束** ——
+ * 被禁止的 **CSS 声明**。**这不是风格偏好，是正确性约束** ——
  * 每一项都会破坏「阅读顺序 == DOM 顺序」，或让 ATS 抽不到文本。
+ *
+ * 一律写成**小写且不含空白**的规范形式：匹配前会 `normalizeCss` 一次
+ * （见 `format.ts`），所以 `DISPLAY : GRID` / `position: absolute`
+ * 这两种写法都能被同一条目命中。清单里同时列 `'position:absolute'` 与
+ * `'position: absolute'` 那种做法是错的：它把「写法的变体」混进了「被禁止的事」。
+ *
+ * 新增的三条（T4c 补）各有具体理由：
+ *
+ * - `display:flex` / `display:inline-flex`：单栏的 flex 无害，但**两个子元素
+ *   排成一行**就是两栏，而这是最容易被无意引入的一种（想「把两半并排省纸」）。
+ * - `grid-template-columns`：`display:grid` 的配套，只禁前者会被绕开。
+ * - `@import`：产物必须自包含。任何外部请求都是一个「这份简历被谁打开过」的信号。
  */
-export const FORBIDDEN_LAYOUT_PATTERNS: readonly string[] = Object.freeze([
+export const FORBIDDEN_CSS_DECLARATIONS: readonly string[] = Object.freeze([
   'column-count',
+  'column-width',
   'columns:',
   'float:',
   'position:absolute',
-  'position: absolute',
   'position:fixed',
-  'position: fixed',
   'display:grid',
-  'display: grid',
+  'display:inline-grid',
   'display:table',
-  'display: table',
+  'display:flex',
+  'display:inline-flex',
+  'grid-template-columns',
+  '@import',
+])
+
+/**
+ * 被禁止的**标签**。与上面那条清单分开，因为两类的匹配范围不同：
+ * CSS 声明只扫样式面（`<style>` 与 `style` 属性），标签扫整个文档 ——
+ * 而转义保证了正文里的 `<` 一定是 `&lt;`，所以标签匹配不会有假阳性。
+ *
+ * `<table` 是这里的头号条目：表格布局是 PDF 文本层错乱与 ATS 解析失败的
+ * 最常见来源，而它比 `column-count` 更「正常」—— 一个想对齐日期的模板作者
+ * 会自然而然地去写它。`<link` / `<script` / `<iframe` / `<object` / `<embed`
+ * 则共同守着一件事：产物是自包含的静态文档，没有外部引用、没有可执行内容。
+ */
+export const FORBIDDEN_MARKUP: readonly string[] = Object.freeze([
+  '<table',
+  '<link',
+  '<script',
+  '<iframe',
+  '<object',
+  '<embed',
+])
+
+/**
+ * 两类的并集。保留这个名字供「整份产物里有没有这些东西」的粗检使用
+ * （`ats.test.ts` 用的就是它）；精确的单栏判定用 `format.ts` 的
+ * `scanForbiddenLayout`，它按样式面与标签分别扫。
+ */
+export const FORBIDDEN_LAYOUT_PATTERNS: readonly string[] = Object.freeze([
+  ...FORBIDDEN_CSS_DECLARATIONS,
+  ...FORBIDDEN_MARKUP,
 ])
 
 /**

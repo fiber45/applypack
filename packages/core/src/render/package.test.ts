@@ -4,6 +4,8 @@ import { maximalArchiveV1 } from '../schema/__fixtures__/maximal-archive'
 import { textsParity } from '../verify/parity'
 import { campusArchiveV1, campusRewritten } from './__fixtures__/campus-archive'
 import { lineOf } from './ats'
+import { VIEW_SUFFIXES, checkFileNames, isDeliveryFileName } from './filename'
+import { scanForbiddenLayout } from './format'
 import { CAMPUS_LAYOUT } from './layout'
 import {
   buildDeliveryPackage,
@@ -341,5 +343,183 @@ describe('T4b · 教育段在英版中位于实习经历之前', () => {
     const lines = CLEAN.views.en.texts
     const workLine = lineOf(lines, '杭州某某科技有限公司')
     expect(lines[workLine + 1]).toContain('2025.06')
+  })
+})
+
+const THREE_VIEWS = [CLEAN.views.cn, CLEAN.views.en, CLEAN.views.bilingual] as const
+
+function withBilingual(texts: readonly string[]): DeliveryPackageViews {
+  return { ...CLEAN.views, bilingual: { ...CLEAN.views.bilingual, texts } }
+}
+
+describe('T4c · 文件名规范', () => {
+  it('默认文件名就是视图名 + .pdf —— 与 T4b 已经用着的视图名兼容', () => {
+    expect(THREE_VIEWS.map((view) => view.fileName)).toEqual([
+      'Resume_CN.pdf',
+      'Resume_EN.pdf',
+      'Resume_Bilingual.pdf',
+    ])
+    for (const view of THREE_VIEWS) expect(view.fileName).toBe(`${view.name}.pdf`)
+  })
+
+  it('视图名的后缀与 `VIEW_SUFFIXES` 一一对应 —— 两处不许各自漂移', () => {
+    // `PackageViewName` 是新写的联合类型，`VIEW_SUFFIXES` 是命名模块里的常量。
+    // 它们必须描述同一件事，否则「后缀」会在两个文件里各自演化。
+    expect(THREE_VIEWS.map((view) => view.name)).toEqual(
+      VIEW_SUFFIXES.map((suffix) => `Resume_${suffix}`),
+    )
+  })
+
+  it('三份文件名全部合规', () => {
+    for (const view of THREE_VIEWS) expect(isDeliveryFileName(view.fileName)).toBe(true)
+    expect(checkFileNames(THREE_VIEWS)).toEqual([])
+  })
+
+  it('自定义词干被净化后拼进文件名，投递包照样通过', () => {
+    const named = buildDeliveryPackage(campusArchiveV1, {
+      rewritten: campusRewritten,
+      fileStem: 'Zhang Zhiyuan',
+    })
+    expect(named.views.en.fileName).toBe('Zhang_Zhiyuan_EN.pdf')
+    expect(named.naming).toEqual({
+      requestedStem: 'Zhang Zhiyuan',
+      usedStem: 'Zhang_Zhiyuan',
+      fellBack: false,
+    })
+    // 命名不是失败：三份文件都合规，内容也没变。
+    expect(named.check.pass).toBe(true)
+    expect(named.check.failures).toEqual([])
+  })
+
+  it('**全中文词干必须回落，而且必须说出来**', () => {
+    // 「张智远」是中文用户命名简历时最自然的一个输入，而它在允许字符集里
+    // 一个字符都不剩。这是本任务里最可能真实发生的一种输入。
+    const named = buildDeliveryPackage(campusArchiveV1, {
+      rewritten: campusRewritten,
+      fileStem: '张智远',
+    })
+    expect(named.naming.fellBack).toBe(true)
+    // 原始请求必须保留 —— 界面才能说出「你要的那个名字用不了」，
+    // 而不是只给一个自己没选过的 `Resume_CN.pdf`。
+    expect(named.naming.requestedStem).toBe('张智远')
+    expect(named.views.cn.fileName).toBe('Resume_CN.pdf')
+    for (const view of [named.views.cn, named.views.en, named.views.bilingual]) {
+      expect(isDeliveryFileName(view.fileName)).toBe(true)
+    }
+    // 回落**不是**失败：投递包本身没问题。
+    expect(named.check.pass).toBe(true)
+    expect(named.check.failures).toEqual([])
+  })
+
+  it('**坏文件名必须能被抓到**（反向验证）—— 这个检查在实践中到不了，所以要手工喂一次', () => {
+    // `sanitizeFileStem` 的契约是「任何输入都产出合规名字」，所以这一条在
+    // 真实调用路径上永远不会响。它必须仍然能响，否则它是一条没人验证过的代码。
+    const broken: DeliveryPackageViews = {
+      ...CLEAN.views,
+      en: { ...CLEAN.views.en, fileName: '张智远 简历.pdf' },
+    }
+    const check = checkPackage(broken)
+    const failure = check.failures.find((item) => item.reason === 'invalid_file_name')
+
+    expect(failure).toBeDefined()
+    expect(check.pass).toBe(false)
+    expect(failure?.severity).toBe('fatal')
+    expect(failure?.offending).toBe('张智远 简历.pdf')
+    // 报错要指得出**哪一个字符**：只说「文件名不合规」等于没有报错。
+    expect(failure?.detail).toContain('第 1 个字符')
+    expect(failure?.detail).toContain('张')
+  })
+
+  it('全部字符都合法却缺了后缀时，报的是后缀而不是字符', () => {
+    const broken: DeliveryPackageViews = {
+      ...CLEAN.views,
+      cn: { ...CLEAN.views.cn, fileName: 'Resume_CN' },
+    }
+    const failure = checkPackage(broken).failures.find(
+      (item) => item.reason === 'invalid_file_name',
+    )
+    expect(failure?.detail).toContain('后缀必须是 .pdf')
+    expect(failure?.detail).not.toContain('个字符')
+  })
+})
+
+describe('T4c · 单栏纪律挂到三份产物上', () => {
+  it('三份产物的 HTML 都过扫描（T4a 只在单语产物上跑过这件事）', () => {
+    for (const view of THREE_VIEWS) {
+      expect([view.name, scanForbiddenLayout(view.html)]).toEqual([view.name, []])
+    }
+  })
+
+  it('**注入分栏样式 ⇒ 必须失败**，且指出是哪一份、哪一条', () => {
+    const twoColumn: DeliveryPackageViews = {
+      ...CLEAN.views,
+      bilingual: {
+        ...CLEAN.views.bilingual,
+        html: '<style>.half { display: flex; }</style>',
+      },
+    }
+    const check = checkPackage(twoColumn)
+    const failure = check.failures.find((item) => item.reason === 'column_layout_detected')
+
+    expect(check.pass).toBe(false)
+    expect(failure?.severity).toBe('fatal')
+    expect(failure?.offending).toContain('Resume_Bilingual')
+    expect(failure?.offending).toContain('display:flex')
+    expect(failure?.detail).toContain('阅读顺序')
+    // 文本一个字符都没动，所以双语那三条检查一条都不该响 ——
+    // 失败必须落在正确的那一条上，否则用户会去改错东西。
+    expect(check.failures.map((item) => item.reason)).toEqual(['column_layout_detected'])
+  })
+})
+
+describe('T4c · 双语版的三条检查互不串台', () => {
+  const EN_TEXTS = CLEAN.views.en.texts
+  const CN_TEXTS = CLEAN.views.cn.texts
+
+  function reasonsOf(texts: readonly string[]): readonly string[] {
+    return checkPackage(withBilingual(texts))
+      .failures.filter((failure) => failure.reason.startsWith('bilingual_'))
+      .map((failure) => failure.reason)
+  }
+
+  it('少拼尾部 ⇒ 只报缺行', () => {
+    // 砍**尾部**而不是只留英版：只留英版时顺序也不对，两条会一起响，
+    // 那样就测不出「哪条检查管哪件事」了。
+    expect(reasonsOf([...EN_TEXTS, ...CN_TEXTS.slice(0, -1)])).toEqual(['bilingual_incomplete'])
+  })
+
+  it('中版在前 ⇒ 只报顺序', () => {
+    expect(reasonsOf([...CN_TEXTS, ...EN_TEXTS])).toEqual(['bilingual_en_not_first'])
+  })
+
+  it('**多出一行 ⇒ 只报「不是逐字拼接」**：T4b 的两条检查此时全绿', () => {
+    const reasons = reasonsOf([...EN_TEXTS, ...CN_TEXTS, 'Page 1 of 2'])
+    expect(reasons).not.toContain('bilingual_incomplete')
+    expect(reasons).not.toContain('bilingual_en_not_first')
+    expect(reasons).toEqual(['bilingual_not_sequential'])
+  })
+
+  it('后半内部被换过顺序（行数相同、内容相同）⇒ 也只报「不是逐字拼接」', () => {
+    const head = CN_TEXTS[0] ?? ''
+    const different = CN_TEXTS.findIndex((line) => line !== head)
+    expect(different).toBeGreaterThan(0)
+
+    const swapped = [...CN_TEXTS]
+    swapped[0] = CN_TEXTS[different] ?? ''
+    swapped[different] = head
+
+    expect(reasonsOf([...EN_TEXTS, ...swapped])).toEqual(['bilingual_not_sequential'])
+  })
+
+  it('报「不是逐字拼接」时要说得出**是哪一行**', () => {
+    const check = checkPackage(withBilingual([...EN_TEXTS, ...CN_TEXTS, 'Page 1 of 2']))
+    const failure = check.failures.find((item) => item.reason === 'bilingual_not_sequential')
+    expect(failure?.offending).toBe('Page 1 of 2')
+    expect(failure?.detail).toContain('Page 1 of 2')
+  })
+
+  it('完好的双语版三条都不响 —— 上面那组「必须响一条」才有意义', () => {
+    expect(reasonsOf(CLEAN.views.bilingual.texts)).toEqual([])
+    expect(CLEAN.check.pass).toBe(true)
   })
 })

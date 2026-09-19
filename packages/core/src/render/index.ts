@@ -9,11 +9,12 @@
  * 两条线合起来，构成了 DESIGN 1.3 那句判据的完整实现：
  * 「上简历」和「进模型请求」是两件事，B 级管的是后者。
  *
- * 三个子模块各有一句话职责：
+ * 五个子模块各有一句话职责：
  *
  * - `model` —— 排版无关的文档结构（T4a）
  * - `layout` / `paginate` —— 版式常量与页数估算（T4b，「EN 版 1 页」的执行者）
  * - `package` —— 一次产出三版 + 交付前检查（T4b）
+ * - `filename` / `format` —— 命名规范与形态规范（T4c）
  */
 
 export {
@@ -24,7 +25,36 @@ export {
 } from './ats'
 export { decodeEntities, escapeHtml } from './escape'
 export {
+  DEFAULT_FILE_STEM,
+  DELIVERY_EXTENSION,
+  DELIVERY_FILE_NAME_PATTERN,
+  MAX_FILE_STEM_LENGTH,
+  VIEW_SUFFIXES,
+  checkFileName,
+  checkFileNames,
+  deliveryFileName,
+  isDeliveryFileName,
+  resolveNaming,
+  sanitizeFileStem,
+  type FileNameProblem,
+  type FileNameProblemReason,
+  type NamingReport,
+  type ViewSuffix,
+} from './filename'
+export {
+  normalizeCss,
+  scanForbiddenLayout,
+  splitTexts,
+  stitchReport,
+  styleSurface,
+  type LayoutViolation,
+  type StitchMismatch,
+  type StitchReport,
+} from './format'
+export {
+  FORBIDDEN_CSS_DECLARATIONS,
   FORBIDDEN_LAYOUT_PATTERNS,
+  FORBIDDEN_MARKUP,
   RESUME_STYLES,
   renderBilingualHtml,
   renderBody,

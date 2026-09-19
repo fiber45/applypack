@@ -60,7 +60,25 @@
  * 「灵活」，是把真实情况如实表达出来 —— 一旦合并成一个 map，
  * `②` 里那张表的第一行就永远落在「构造性」那一侧。
  *
- * @see DESIGN 10.1 / 10.2 · TASKS.md T4b · T4c（文件名）· T4d（自述三视图）
+ * ### ③ 文件名是**输入的函数**，不是常量拼接
+ *
+ * T4c 的判据是 `^[A-Za-z0-9_\-]+\.pdf$`。若三份文件名都是写死的常量，
+ * 那条判据就是「对常量做正则匹配」—— 一条恒真断言，无法与「检查根本没在跑」
+ * 区分开（T1.4 的教训）。所以这里接受一个 `fileStem`：招聘系统常要求
+ * 「姓名_岗位.pdf」这种命名，用户的词干经 `sanitizeFileStem` 净化后才拼进名字，
+ * 而**后缀由代码追加**。
+ *
+ * 这个顺序带来一条可证的命题：**三份文件不可能撞名**。不同的后缀必然给出
+ * 不同的名字，与词干是什么无关。若将来改成「每份文件各自接受一个完整文件名」，
+ * 这条性质立刻消失 —— 而那时 `filename.test.ts` 会红。
+ *
+ * 命名的两种情况**都不算失败**（投递包本身没问题）：
+ * 词干被净化（`Zhang Zhiyuan` → `Zhang_Zhiyuan`）与词干全是非拉丁字符
+ * 而回落为默认值（`张智远` → `Resume`）。但后者必须在界面上说出来 ——
+ * 用户拿到的名字不是他要求的，静默处理就是「看起来在工作」，所以
+ * `DeliveryPackage.naming` 把 `requestedStem` 与 `usedStem` 分开带出来。
+ *
+ * @see DESIGN 10.1 / 10.2 · TASKS.md T4b · T4c · T4d
  */
 
 import type { ArchiveV1 } from '../schema/index'
@@ -68,6 +86,15 @@ import type { FailureSeverity } from '../verify/gate'
 import { compareNumeric, extractNumbers } from '../verify/numbers'
 import { locateNumbers, textsParity } from '../verify/parity'
 import { extractLines } from './ats'
+import {
+  checkFileNames,
+  deliveryFileName,
+  resolveNaming,
+  DELIVERY_FILE_NAME_PATTERN,
+  type NamingReport,
+  type ViewSuffix,
+} from './filename'
+import { scanForbiddenLayout, splitTexts, stitchReport } from './format'
 import { renderBilingualHtml, renderHtml } from './html'
 import { CAMPUS_LAYOUT, type BlockKind, type LayoutSpec } from './layout'
 import {
@@ -80,6 +107,19 @@ import {
 import { BLOCK_LABELS, estimatePages, layoutBlocks, type PageEstimate } from './paginate'
 
 export type PackageViewName = 'Resume_CN' | 'Resume_EN' | 'Resume_Bilingual'
+
+/**
+ * 视图名 → 文件后缀。**这个映射是「三份文件不可能撞名」这条性质的唯一依据**
+ * （后缀由代码在净化之后追加，见 `filename.ts` 文件头）。
+ *
+ * `package.test.ts` 里有一条断言把 `PackageViewName` 与 `VIEW_SUFFIXES`
+ * 钉在一起，所以这个名字联合与这张表不会各自漂移。
+ */
+const SUFFIX_OF: Readonly<Record<PackageViewName, ViewSuffix>> = Object.freeze({
+  Resume_CN: 'CN',
+  Resume_EN: 'EN',
+  Resume_Bilingual: 'Bilingual',
+})
 
 /** 单语版长度 1；双语版长度 2，**EN 在前**（DESIGN 10.1「顺序拼页，非并排」）。 */
 export type ViewModels = readonly [DocumentModel] | readonly [DocumentModel, DocumentModel]
@@ -98,6 +138,8 @@ export interface PackageView {
    */
   readonly texts: readonly string[]
   readonly pages: PageEstimate
+  /** 交付时使用的文件名。**不带上路径** —— 产物是内存里的一段字符串或字节。 */
+  readonly fileName: string
 }
 
 export interface DeliveryPackageViews {
@@ -112,6 +154,11 @@ export interface DeliveryPackageOptions {
   /** 逐语种的改写产物（T3.1 的两次独立调用）。省略即用档案原文。 */
   readonly rewritten?: Partial<Record<RenderLang, ReadonlyMap<string, readonly string[]>>>
   readonly layout?: LayoutSpec
+  /**
+   * 文件名的词干（如 `'ZhangZhiyuan'`）。省略即 `'Resume'`。
+   * 会被净化；全部字符都不可用时回落为默认值并由 `naming.fellBack` 标出。
+   */
+  readonly fileStem?: string
 }
 
 export type PackageFailureReason =
@@ -121,6 +168,12 @@ export type PackageFailureReason =
   | 'bilingual_incomplete'
   /** 双语版的前半段不是英版。 */
   | 'bilingual_en_not_first'
+  /** 双语版不是「EN ++ CN」的逐字拼接（多出了行，或某一半内部顺序被改过）。 */
+  | 'bilingual_not_sequential'
+  /** 产物里出现了分栏 / 绝对定位 / 表格布局，或外部引用。 */
+  | 'column_layout_detected'
+  /** 输出文件名不符合 `^[A-Za-z0-9_\-]+\.pdf$`。 */
+  | 'invalid_file_name'
   /** 英版超过一页。 */
   | 'en_over_one_page'
 
@@ -130,9 +183,13 @@ export interface PackageFailure {
    * 复用闸门的严重性词表（`core/verify/gate.ts`）。
    *
    * **本层没有 `target` 层。** 闸门里 `target` 的含义是「写得好不好」，
-   * 而投递包的四项没有一项是好坏问题：数字不一致是撒谎，
-   * 双语缺一半、顺序倒了、超页，都是「这份东西不能投出去」。
-   * 所以全部阻断，`severity` 在这里只区分「事实问题」与「形态问题」。
+   * 而投递包的这几项没有一项是好坏问题：数字不一致是撒谎，
+   * 双语缺一半、顺序倒了、多出了行、超页、并排两栏，都是「这份东西不能投出去」。
+   * 所以全部阻断，`severity` 在这里只区分两种处置：
+   *
+   * - `fatal` —— **这份产物本身不可信**：它说了一件事，而事实是另一件
+   *   （数字对不上），或者它不再是一份能通过 ATS 的文档（并排两栏、文件名不合规）。
+   * - `hard` —— 产物可信，但形态不合交付要求（缺半页、顺序不对、超页）。
    */
   readonly severity: FailureSeverity
   readonly offending: string
@@ -171,38 +228,6 @@ export interface PackageCheck {
 
 const CN_TARGET: RenderTarget = 'resume_zh'
 const EN_TARGET: RenderTarget = 'resume_en_campus'
-
-function countOf(texts: readonly string[]): Map<string, number> {
-  const counts = new Map<string, number>()
-  for (const text of texts) counts.set(text, (counts.get(text) ?? 0) + 1)
-  return counts
-}
-
-/**
- * 按**多重集**把左侧文本分成「两侧都有」与「只有左侧有」。
- *
- * 用多重集而不是集合，是因为页面上同一行出现两次是可能的
- * （两条内容相同的要点），而那种情况下「另一侧也有一行」只抵消一次。
- * 集合语义会把重复行当成一次匹配，于是双语版少拼一行也不会被发现。
- */
-function splitTexts(
-  left: readonly string[],
-  right: readonly string[],
-): { shared: readonly string[]; leftOnly: readonly string[] } {
-  const pool = countOf(right)
-  const shared: string[] = []
-  const leftOnly: string[] = []
-  for (const text of left) {
-    const remaining = pool.get(text) ?? 0
-    if (remaining > 0) {
-      shared.push(text)
-      pool.set(text, remaining - 1)
-    } else {
-      leftOnly.push(text)
-    }
-  }
-  return { shared, leftOnly }
-}
 
 function setOfNumbers(texts: readonly string[]): ReadonlySet<string> {
   return new Set(texts.flatMap((text) => [...extractNumbers(text)]))
@@ -286,6 +311,18 @@ function heaviestBlocks(model: DocumentModel, layout: LayoutSpec): string {
  * 单独导出（而不是只作为 `buildDeliveryPackage` 的内部步骤），是为了让它
  * 能被**反向验证** —— T4b 的第三条勾要求「篡改英版任意一个数字 ⇒ 校验必须失败」。
  * 一条无法与「检查根本没在跑」区分的绿，不算绿（T1.4 的教训）。
+ *
+ * 七条检查的分工：
+ *
+ * | 检查 | 守的是 |
+ * |---|---|
+ * | `cross_language_mismatch` | 两份文档说的是同一组数字 |
+ * | `bilingual_incomplete` | 双语版没有丢行 |
+ * | `bilingual_en_not_first` | 双语版是 EN 在前 |
+ * | `bilingual_not_sequential` | 双语版是**逐字**拼接（没多、没错位） |
+ * | `column_layout_detected` | 产物单栏、自包含 |
+ * | `invalid_file_name` | 文件名能活着穿过上传链路 |
+ * | `en_over_one_page` | 英版严格一页 |
  */
 export function checkPackage(
   views: DeliveryPackageViews,
@@ -313,12 +350,14 @@ export function checkPackage(
     })
   }
 
-  // 双语版：完整性 + 顺序。**这两条是「双语版只剩一半」唯一可能被抓到的地方**
-  // （两两数字相等抓不到它，见文件头 ①）。
-  const cnMissing = splitTexts(views.cn.texts, views.bilingual.texts).leftOnly
-  const enMissing = splitTexts(views.en.texts, views.bilingual.texts).leftOnly
-  const missing = [...new Set([...cnMissing, ...enMissing])]
-  if (missing.length > 0) {
+  // 双语版：三条检查守三件事，**互不蕴含**（见 `format.ts` 的 `stitchReport`）。
+  // 这是「双语版只剩一半」唯一可能被抓到的地方 —— 两两数字相等抓不到它，
+  // 理由见文件头 ①。
+  const stitch = stitchReport(views.bilingual.texts, views.en.texts, views.cn.texts)
+  const orderBroken = !startsWith(views.bilingual.texts, views.en.texts)
+
+  if (stitch.missing.length > 0) {
+    const missing = stitch.missing
     failures.push({
       reason: 'bilingual_incomplete',
       severity: 'hard',
@@ -330,7 +369,7 @@ export function checkPackage(
     })
   }
 
-  if (!startsWith(views.bilingual.texts, views.en.texts)) {
+  if (orderBroken) {
     failures.push({
       reason: 'bilingual_en_not_first',
       severity: 'hard',
@@ -338,6 +377,70 @@ export function checkPackage(
       detail:
         '双语版的前半段不是英版。DESIGN 10.1 要求顺序拼页且 EN 在前 —— ' +
         '顺序反了不会被排版引擎发现，只会让招聘方先读到中文。',
+    })
+  }
+
+  // 第三条。行不缺、英版也在前时，**仍然可能不是逐字拼接**：
+  // 多出来的一行（页眉、页码），或者后半内部被改过顺序（行数相同、内容相同）。
+  // 这两种情形在 T4b 的两条检查下是全绿的 —— 上面两条断言里的 `not.toContain`
+  // 就是用来证明这一点的。
+  if (!stitch.ok && stitch.missing.length === 0 && !orderBroken) {
+    const stray = stitch.extra[0]
+    const mismatch = stitch.firstMismatch
+    failures.push({
+      reason: 'bilingual_not_sequential',
+      severity: 'hard',
+      offending: stray ?? `第 ${(mismatch?.index ?? 0) + 1} 行`,
+      detail:
+        stray === undefined
+          ? `双语版的行数与「EN ++ CN」相同，但顺序对不上：第 ${(mismatch?.index ?? 0) + 1} 行` +
+            `期望「${mismatch?.expected ?? ''}」，实际是「${mismatch?.actual ?? ''}」。` +
+            '行数对、内容对、顺序不对，是「缺行」与「顺序倒了」两条检查都抓不到的情形。'
+          : `双语版里有 ${stitch.extra.length} 行是中英两半都没有的，例如「${stray}」。` +
+            '顺序拼页的含义是逐字等于「EN 全部行 + CN 全部行」—— 多出来的行会以' +
+            '「招聘方读到一个你没写过的句子」的形式出现，而不是一条报错。',
+    })
+  }
+
+  // 单栏纪律。T4a 只在单语产物上跑过这件事，T4c 把它挂到**三份**产物上 ——
+  // 双语版是唯一可能被写成并排两栏的那一份（「并排省纸」是一个很自然的念头）。
+  for (const view of [views.cn, views.en, views.bilingual]) {
+    const violations = scanForbiddenLayout(view.html)
+    if (violations.length === 0) continue
+    failures.push({
+      reason: 'column_layout_detected',
+      severity: 'fatal',
+      offending: `${view.name} · ${violations.map((item) => item.pattern).join(' / ')}`,
+      detail:
+        `${view.name} 的产物里出现了被禁止的排版手段：` +
+        violations
+          .map((item) => `${item.pattern}（上下文中出现于「…${item.context}…」）`)
+          .join('；') +
+        '。一旦分栏，PDF 的文本层顺序就取决于渲染引擎的阅读顺序推断，' +
+        '而 T4a 的全部断言都建立在「阅读顺序 == DOM 顺序」这个前提上 —— ' +
+        '前提不成立时它们一起失效，而且不会有任何症状。' +
+        '双语版必须是顺序拼页，不是并排两栏。',
+    })
+  }
+
+  // 文件名规范。这条在**实践中到不了**：`sanitizeFileStem` 的契约是
+  // 「任何输入都产出合规的文件名」（`filename.test.ts` 用对抗性输入证明了它）。
+  // 所以它是一条**回归绊线**，它响的时候说的是「我们自己的契约被绕过了」，
+  // 而不是「用户填错了」。它必须仍然能响 —— `package.test.ts` 有一条断言
+  // 手工构造坏名字喂给它。
+  for (const problem of checkFileNames([views.cn, views.en, views.bilingual])) {
+    failures.push({
+      reason: 'invalid_file_name',
+      severity: 'fatal',
+      offending: problem.fileName,
+      detail:
+        `输出文件名「${problem.fileName}」不符合 ${DELIVERY_FILE_NAME_PATTERN.source}` +
+        (problem.reason === 'illegal_character'
+          ? `：第 ${problem.index + 1} 个字符「${problem.character}」不在允许集内。`
+          : '：后缀必须是 .pdf（小写）。') +
+        '这是本层自己的契约被绕过，不是用户输入的问题 —— 这个名字会在上传链路里' +
+        '被 percent-encode、被截断或按「不是 PDF」拒绝，而用户交上去的东西' +
+        '与他以为的不是同一个。',
     })
   }
 
@@ -372,40 +475,57 @@ function modelOptions(
   }
 }
 
-function makeView(name: PackageViewName, models: ViewModels, layout: LayoutSpec): PackageView {
+function makeView(
+  name: PackageViewName,
+  models: ViewModels,
+  layout: LayoutSpec,
+  stem: string,
+): PackageView {
   const [first, second] = models
   const html = second === undefined ? renderHtml(first) : renderBilingualHtml([first, second])
-  return { name, models, html, texts: extractLines(html), pages: estimatePages(models, layout) }
+  return {
+    name,
+    models,
+    html,
+    texts: extractLines(html),
+    pages: estimatePages(models, layout),
+    fileName: deliveryFileName(stem, SUFFIX_OF[name]),
+  }
 }
 
 export interface DeliveryPackage {
   readonly views: DeliveryPackageViews
   readonly layout: LayoutSpec
   readonly check: PackageCheck
+  /**
+   * 文件名的来源与结果。`fellBack` 为真时界面必须说一句 ——
+   * 用户拿到的名字不是他要求的，而这件事**不会**产生任何失败（理由见文件头 ③）。
+   */
+  readonly naming: NamingReport
 }
 
 /**
  * 从一份档案产出三版投递包与它的检查结论。
  *
- * 顺序固定为 CN → EN → 双语，双语内部 EN 在前。这个顺序在 T4c 会变成
- * 文件名的前缀（`Resume_EN.pdf` / `Resume_CN.pdf` / `Resume_Bilingual.pdf`），
- * 所以它是产物的一部分，不是调用方的口味。
+ * 顺序固定为 CN → EN → 双语，双语内部 EN 在前。这个顺序是产物的一部分，
+ * 不是调用方的口味：它决定了文件名的后缀（`_CN` / `_EN` / `_Bilingual`）。
  */
 export function buildDeliveryPackage(
   archive: ArchiveV1,
   options: DeliveryPackageOptions = {},
 ): DeliveryPackage {
   const layout = options.layout ?? CAMPUS_LAYOUT
+  const naming = resolveNaming(options.fileStem)
 
   const cnModel = buildDocumentModel(archive, modelOptions(CN_TARGET, 'zh', options))
   const enModel = buildDocumentModel(archive, modelOptions(EN_TARGET, 'en', options))
 
   const views: DeliveryPackageViews = {
-    cn: makeView('Resume_CN', [cnModel], layout),
-    en: makeView('Resume_EN', [enModel], layout),
+    cn: makeView('Resume_CN', [cnModel], layout, naming.usedStem),
+    en: makeView('Resume_EN', [enModel], layout, naming.usedStem),
     // EN 在前：DESIGN 10.1 的「顺序拼页（EN 在前），非并排」。
-    bilingual: makeView('Resume_Bilingual', [enModel, cnModel], layout),
+    bilingual: makeView('Resume_Bilingual', [enModel, cnModel], layout, naming.usedStem),
   }
 
-  return { views, layout, check: checkPackage(views, layout) }
+  return { views, layout, naming, check: checkPackage(views, layout) }
 }
