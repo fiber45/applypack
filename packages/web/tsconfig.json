@@ -1,0 +1,21 @@
+{
+  // 与 core / extension 的关键差别只有一处，而且它是**放开**约束的那一处：
+  //
+  //   core 与 extension 的 `lib: ["ES2023"]` 是「不许有 DOM」的编译期强制手段；
+  //   Web 端恰恰是唯一该有 DOM 的地方，所以这里显式加上 DOM 与 DOM.Iterable。
+  //
+  // 反过来，这一行也说明了一件事：**「零 DOM」不是全局洁癖，是有归属的约束。**
+  // 需要 DOM 的能力（PDF 生成、pdf.js 反向抽取、剪贴板、下载）全部落在本包，
+  // 而不是把 `document` 塞进 core。T4a 留下的那个缺口就等在这里补。
+  //
+  // `types: []` 保留原样：不把 node_modules/@types 下的包全量注入全局作用域。
+  // React 的类型通过 `import` 解析（jsx: react-jsx 走 react/jsx-runtime），
+  // 不依赖全局 JSX 命名空间。
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts", "vitest.config.ts"]
+}

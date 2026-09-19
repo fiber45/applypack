@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { CompiledJd } from '../compile/index'
 import { maximalArchiveV1 } from '../schema/__fixtures__/maximal-archive'
 import * as match from './index'
-import { DEFAULT_WEIGHTS, matchArchive, matchItems, scoreItem } from './index'
+import { DEFAULT_WEIGHTS, matchArchive, matchItems, scoreItem, type MatchWeights } from './index'
 import type { MatchItem } from './types'
 
 const JD: CompiledJd = {
@@ -239,6 +239,11 @@ describe('匹配层与模型的关系', () => {
     expect(Object.keys(match).sort()).toEqual([
       'DEFAULT_LIMIT',
       'DEFAULT_WEIGHTS',
+      'DIMENSION_HINT',
+      'DIMENSION_LABEL',
+      'REPORT_DIMENSIONS',
+      'apportionToTenths',
+      'buildReportView',
       'explainRejection',
       'extractMatchItems',
       'labelOf',
@@ -289,5 +294,39 @@ describe('从档案抽取条目', () => {
     expect(report.scored).toHaveLength(5)
     expect(report.selected).toHaveLength(2)
     expect(report.explanations).toHaveLength(3)
+  })
+})
+
+describe('淘汰解释挂在条目上，不是另开一张表（T2.3 ①）', () => {
+  const report = matchArchive(maximalArchiveV1, JD, { now: NOW, limit: 2 })
+
+  it('选中项的 rejection 是 null，淘汰项的必然有值', () => {
+    expect(report.selected.every((entry) => entry.rejection === null)).toBe(true)
+    expect(report.rejected.every((entry) => entry.rejection !== null)).toBe(true)
+  })
+
+  it('便利数组 explanations 恒等于 rejected 的投影 —— 不是第二份真相', () => {
+    // 这条断言的作用是**让平行数组不可能漂移**。没有它，同一个结果有两处存放，
+    // 改动一处另一处不变时没有任何症状（而这正是首版把解释放平行数组的代价）。
+    expect(report.explanations).toEqual(report.rejected.map((entry) => entry.rejection))
+    expect(report.explanations).toHaveLength(report.rejected.length)
+  })
+
+  it('遍历 scored 就能拿到全部解释，不需要任何 id 查找', () => {
+    // 这条断言在说的事很具体：**「同等可查」不再依赖消费方记得 join。**
+    // 首版要写 `report.explanations.find((item) => item.entryId === entry.item.entryId)`
+    // 才能从一条淘汰项拿到它的解释 —— 一次 find 的失败是静默的（返回 undefined）。
+    const fromScored = report.scored
+      .filter((entry) => !entry.selected)
+      .map((entry) => entry.rejection?.summary)
+    expect(fromScored).toEqual(report.explanations.map((explanation) => explanation.summary))
+    expect(fromScored.every((summary) => typeof summary === 'string')).toBe(true)
+  })
+
+  it('报告自带本次打分用的权重 —— 否则分数构成无法计算', () => {
+    expect(report.weights).toBe(DEFAULT_WEIGHTS)
+
+    const custom: MatchWeights = { keyword: 0.4, recency: 0.1, quantification: 0.2, depth: 0.3 }
+    expect(matchItems([STRONG], JD, { now: NOW, weights: custom }).weights).toBe(custom)
   })
 })
