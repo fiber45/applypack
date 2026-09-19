@@ -111,7 +111,7 @@ export const AMBIGUOUS_FORM_HTML = `<!doctype html>
 
 export const MOCKBOARD_FORM_HTML = `<!doctype html>
 <html lang="zh-CN"><body>
-<form data-platform="mockboard">
+<form data-platform="mockboard" data-platform-version="1">
   <input id="mb-name" name="candidate_name" type="text">
 
   <input id="mb-phone" name="phone_number" type="tel">

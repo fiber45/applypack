@@ -1,5 +1,5 @@
 /**
- * 填充引擎 —— 内容脚本 + 适配器注册表（T5.1，纯逻辑层）。
+ * 填充引擎 —— 内容脚本 + 适配器注册表（T5.1/T5.2，纯逻辑层）。
  *
  * 沿用 T1.5 定下的模式：**先落纯逻辑，平台接缝留最小接口**。
  * 本模块对 DOM 只读不写，输入输出都是纯数据 —— 整层在 Node 里
@@ -27,6 +27,7 @@ export {
   resetPlatformAdaptersForTests,
   type PlatformAdapter,
 } from './adapters'
+export { BUILTIN_PLATFORM_ADAPTERS, registerBuiltinPlatformAdapters } from './platforms'
 export {
   buildFillPlan,
   type FillGapReason,

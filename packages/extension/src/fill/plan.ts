@@ -187,9 +187,9 @@ function resolveFill(
     return { kind: 'gap', key, reason: 'no-value', path: entry.path, blocking: required }
   }
 
-  if (feature.kind === 'select' && feature.options !== null) {
-    // 按选项**文本**匹配（用户看到的是文本），回填写 option 的 value
-    //（表单真正提交的是它）。
+  if (feature.options !== null) {
+    // select 与 radio 组同走此路：按选项**文本**匹配（用户看到的是文本），
+    // 回填写 option 的 value（表单真正提交的是它；radio 则是要点中的那个成员）。
     const normalizedValue = normalizeLabeling(value)
     const matched = feature.options.find(
       (option) => normalizeLabeling(option.text) === normalizedValue,

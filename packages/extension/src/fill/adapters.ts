@@ -7,8 +7,9 @@ import type { DomDocument } from './dom'
  * 不赌启发式；没命中 → 启发式兜底；命中了但选择器扑空（平台改版）
  * → 逐字段降级回启发式（DESIGN 232 的风险条目，降级在 plan.ts 落地）。
  *
- * T5.1 只交付注册表机制与 mockboard 这个**虚构**适配器作为测试锚点；
- * 前 3 个真实适配器是 T5.2 —— 每个带一份保存的快照 fixture。
+ * T5.1 交付注册表机制与 mockboard 这个**虚构**适配器作为测试锚点；
+ * T5.2 交付前 3 个真实适配器（北森 / Moka / 大易，见 `platforms.ts`），
+ * 每个带一份版本化的快照 fixture 与逐字段 ground truth。
  *
  * 注册表是进程内可变状态，但只暴露 `register` / `detect` / 测试用的
  * `reset` —— 没有「运行中动态换表」的场景，MV3 内容脚本的注册发生在
@@ -20,10 +21,17 @@ export interface PlatformAdapter {
   /**
    * 平台标记：页面上 `[data-platform="<marker>"]` 存在即命中。
    * 刻意用自申报标记而不是 URL 模式：URL 匹配规则每家一个坑
-   * （子域、路径重写、短链），而 T5.2 的快照 fixture 里标记可以
+   * （子域、路径重写、短链），而快照 fixture 里标记可以
    * 与真实页面核对；URL 规则留给适配器作者按需加，注册表不猜。
    */
   readonly platformMarker: string
+  /**
+   * 选择器版本号（主版本数字串）。与快照 fixture 上的
+   * `data-platform-version` 由测试钉成相等 —— 平台改版时两边必须
+   * 一起 bump，「改了选择器忘了换快照」（或反过来）因此是红灯
+   * 而不是上线后才被发现的选择器扑空。
+   */
+  readonly version: string
   /** catalog path → CSS 选择器。选择器扑空 = 该字段降级，不报错。 */
   readonly selectors: Readonly<Record<string, string>>
 }
@@ -35,6 +43,7 @@ export interface PlatformAdapter {
 export const MOCKBOARD_ADAPTER: PlatformAdapter = Object.freeze({
   id: 'mockboard',
   platformMarker: 'mockboard',
+  version: '1',
   selectors: Object.freeze({
     'basics.name.zh': '#mb-name',
     'basics.contact.phone': '#mb-phone',

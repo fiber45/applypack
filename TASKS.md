@@ -1118,8 +1118,33 @@ T1.1 schema → T1.2 加密 → T2.1 编译 → T2.2 匹配 → T3.2 硬校验 �
 > 变异验证：去掉包含匹配 / 歧义改为填第一个 / 删除 checkbox 排除，三变体全被杀。
 
 ### T5.2 前 3 个适配器
-- [ ] 每个适配器一份快照 fixture + 字段匹配率断言
-- [ ] 选哪 3 个平台写进 README 并说明选择依据
+- [x] 每个适配器一份快照 fixture + 字段匹配率断言
+- [x] 选哪 3 个平台写进 README 并说明选择依据
+
+> **T5.2 交付记录**（`packages/extension/src/fill/platforms.ts` + 三份快照 fixture）：
+>
+> - **北森 / Moka / 大易**。选择依据：国内校招网申表单层基本被这三家 ATS SaaS
+>   覆盖（外企在华校招也多跑在其上），且三家的 DOM 风格恰好是三种典型难度 ——
+>   北森（随机 id、span 标题、placeholder 句式，标题对提取层不可见）、
+>   Moka（label 规范，适配器刻意少钉，验证「不多钉」的克制）、
+>   大易（电话字段打平需适配器解围；年份下拉 vs `YYYY-MM` 走 option-mismatch 不硬猜）。
+> - **主判据仍是逐字段 ground truth 整体相等**（每家一份，12 条），不是百分比：
+>   fill 的 `key→path:value:source` 与 gap 的 `key→reason:blocking` 双向核对 ——
+>   多填、少填、错配、source 标错，任何偏差都红。
+> - **版本纪律**（DESIGN 232 的执行点）：`PlatformAdapter.version` 与快照上的
+>   `data-platform-version` 钉成相等；CI 冒烟断言每个选择器都在自家快照上解析成功
+>   —— 扑空即版本漂移，红灯亮在 CI 而不是用户的浏览器里。
+> - **radio 组提取**（T5.1 显式欠账，随本任务还上）：同 name 的 radio 合成一个
+>   带 options 的特征，语义与 select 同为「枚举选一」；选项文案与题干分开采集
+>   （题干认 aria，选项认 label —— 混了「男/女」会变成「性别/性别」）。
+>   fieldset/legend 题干不在最小 DOM 接口内，是已声明的提取缺口。
+> - **快照是手工建模的近似（provisional）**，声明与采集流程见 README
+>   「适配器与快照维护」；判据不因 provisional 放松，真快照换入后同组断言原样生效。
+> - 实现期暴露一个真实目录缺口：`education.0.endDate` 的 kinds 没有 select ——
+>   真实站点毕业时间几乎都是下拉，generic fixture 的 `type=month` 建模掩住了它。
+> - 测试数：extension 76 → **88**（fill 42）。全仓 `turbo typecheck test build`
+>   **9/9 绿**（core 658 / extension 88 / web 43 / evals 11）。
+>   变异：错选择器 / 删 radio kind / 废 radio 提取，三变体全被杀。
 
 ### T5.3 预览确认与缺口语义
 - [ ] 任何写入之前必须经过用户确认

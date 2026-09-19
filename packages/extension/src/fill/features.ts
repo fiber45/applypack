@@ -20,6 +20,7 @@ export type FieldKind =
   | 'date'
   | 'month'
   | 'select'
+  | 'radio'
   | 'textarea'
   | 'file'
   | 'checkbox'
@@ -66,26 +67,29 @@ export interface FieldFeature {
   readonly name: string | null
   readonly id: string | null
   readonly placeholder: string | null
-  /** select 专有：value 与文本分开 —— 匹配用文本，回填用 value。 */
+  /** select / radio 组专有：value 与文本分开 —— 匹配用文本，回填用 value。 */
   readonly options: readonly SelectOption[] | null
 }
 
 /**
  * 从页面提取全部字段特征，保持 DOM 顺序。
  *
- * radio 组暂不提取（T5.2 随第一批适配器一起做）：分组语义（同 name 的
- * 多个 radio 合成一个带 options 的特征）值得专门为一组断言做，
- * 顺手做的话「漏提」会混进「误提」里，没法定位。
+ * radio 组（T5.2）：同 name 的多个 radio 合成**一个**带 options 的特征，
+ * 在第一个成员的 DOM 位置出现 —— 用户面对的是一道单选题，
+ * 不是 N 个控件；组内后续成员不再单独产出特征。
  */
 export function extractFieldFeatures(doc: DomDocument): readonly FieldFeature[] {
   const features: FieldFeature[] = []
   const seenKeys = new Map<string, number>()
+  const emittedRadioGroups = new Set<string>()
 
   const elements = doc.querySelectorAll('input, textarea, select')
   for (let index = 0; index < elements.length; index += 1) {
     const element = elements[index]
     if (element === undefined) continue // noUncheckedIndexedAccess：索引访问的窄化
-    const feature = featureFor(element, doc, index)
+    const feature = isRadioInput(element)
+      ? radioGroupFeature(element, doc, emittedRadioGroups)
+      : featureFor(element, doc, index)
     if (feature === null) continue
 
     // key 冲突只可能来自「无 id 也无 name」的兜底序号或重复 id 的坏 HTML。
@@ -97,6 +101,111 @@ export function extractFieldFeatures(doc: DomDocument): readonly FieldFeature[] 
   }
 
   return features
+}
+
+function isRadioInput(element: DomElement): boolean {
+  return (
+    element.tagName.toUpperCase() === 'INPUT' &&
+    (element.getAttribute('type') ?? '').toLowerCase() === 'radio'
+  )
+}
+
+/**
+ * radio 组特征：由第一个成员代表全组。
+ *
+ * - key / name = 组的 name 属性（组身份；无 name 的 radio 是坏 HTML，
+ *   逐个丢弃 —— 与旧版「不提取」时的行为一致）；
+ * - options = 各成员的选项文案（label[for] 或包裹式 label，**不含**
+ *   aria —— aria 指向的是题干不是选项），文案缺失时落回成员 value；
+ * - labels（题干）= 成员上的 aria-label / aria-labelledby 文案去重。
+ *   fieldset/legend 分组语义不在 DomElement 的最小接口里，站点若
+ *   只用 legend 出题干，本层看不见 —— 这是已声明的提取缺口，
+ *   不是启发式的错；适配器选择器或 aria 化的站点不受影响。
+ * - required = 任一（未禁用）成员的 required / aria-required / 题干 `*`。
+ */
+function radioGroupFeature(
+  firstMember: DomElement,
+  doc: DomDocument,
+  emitted: Set<string>,
+): FieldFeature | null {
+  const name = firstMember.getAttribute('name')
+  if (name === null) return null
+  if (emitted.has(name)) return null // 组内后续成员：已被第一个成员代表
+  emitted.add(name)
+
+  const members = doc.querySelectorAll(`input[type="radio"][name="${cssEscape(name)}"]`)
+  const options: SelectOption[] = []
+  const headingTexts = new Set<string>()
+  /** `pushText` 的 Set 版：radio 组的题干来自多个成员，需要去重。 */
+  const pushHeading = (raw: string | null): void => {
+    if (raw === null) return
+    const text = raw.trim()
+    if (text !== '') headingTexts.add(text)
+  }
+  let required = false
+
+  for (const member of members) {
+    if (member.getAttribute('disabled') !== null) continue
+    if (
+      member.getAttribute('required') !== null ||
+      member.getAttribute('aria-required') === 'true'
+    ) {
+      required = true
+    }
+
+    const value = member.getAttribute('value') ?? ''
+    const labelText = widgetLabelText(member, doc)
+    const optionText = labelText !== '' ? labelText : value
+    if (optionText !== '') options.push({ value, text: optionText })
+
+    pushHeading(member.getAttribute('aria-label'))
+    const labelledBy = member.getAttribute('aria-labelledby')
+    if (labelledBy !== null) {
+      for (const refId of labelledBy.split(/\s+/)) {
+        const ref = doc.getElementById(refId)
+        if (ref !== null) pushHeading(ref.textContent)
+      }
+    }
+  }
+
+  return {
+    key: name,
+    kind: 'radio',
+    required:
+      required || [...headingTexts].some((text) => text.includes('*')),
+    labels: [...headingTexts],
+    name,
+    id: null,
+    placeholder: null,
+    options,
+  }
+}
+
+/**
+ * 选项文案（radio 成员）：label[for=id] 或包裹式 label 的文本。
+ * 刻意不含 aria —— 成员的 aria-label / aria-labelledby 是**题干**，
+ * 混进选项会让「男 / 女」变成「性别 / 性别」。
+ */
+function widgetLabelText(member: DomElement, doc: DomDocument): string {
+  const id = member.getAttribute('id')
+  if (id !== null) {
+    for (const label of doc.querySelectorAll(`label[for="${cssEscape(id)}"]`)) {
+      const text = label.textContent.trim()
+      if (text !== '') return text
+    }
+  }
+
+  let ancestor = member.parentElement
+  for (let depth = 0; ancestor !== null && depth < 4; depth += 1) {
+    if (ancestor.tagName.toUpperCase() === 'LABEL') {
+      const text = ancestor.textContent.trim()
+      if (text !== '') return text
+      break
+    }
+    ancestor = ancestor.parentElement
+  }
+
+  return ''
 }
 
 /** 单个元素的特征提取；返回 null = 不是用户要填的字段（hidden/submit/…）。 */
@@ -114,7 +223,6 @@ function featureFor(
   let kind: FieldKind
   let id = attr('id')
   let name = attr('name')
-  let disabled = false
 
   if (tagName === 'TEXTAREA') {
     kind = 'textarea'
@@ -124,14 +232,13 @@ function featureFor(
     const type = (element.getAttribute('type') ?? 'text').toLowerCase()
     if (SKIP_INPUT_KINDS.has(type)) return null
     const mapped = INPUT_KINDS[type]
-    if (mapped === undefined) return null // 未知类型宁可不提，不猜
+    if (mapped === undefined) return null // 未知类型宁可不提，不猜（radio 走 radioGroupFeature）
     kind = mapped
   } else {
     return null
   }
 
-  disabled = element.getAttribute('disabled') !== null
-  if (disabled) return null
+  if (element.getAttribute('disabled') !== null) return null
 
   const labels = collectLabels(element, doc, id)
 

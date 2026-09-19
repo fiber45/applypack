@@ -34,9 +34,17 @@ export type FieldKindForFill =
   | 'date'
   | 'month'
   | 'select'
+  | 'radio'
   | 'textarea'
 
-/** 可填的 kind 全集（file / checkbox / radio 刻意不在内）。 */
+/**
+ * 可填的 kind 全集（file / checkbox 刻意不在内）。
+ *
+ * `radio` 是 T5.2 加入的：同 name 的 radio 组在提取层合成**一个**
+ * 带 options 的特征，语义与 select 同为「枚举选一」，所以凡是有
+ * `select` 的条目都同时接受 `radio`。file（红线 5：不代填上传）与
+ * checkbox（替用户同意条款比填错更严重）依旧被排除在任何条目之外。
+ */
 export const FILLABLE_KINDS: readonly FieldKindForFill[] = Object.freeze([
   'text',
   'email',
@@ -46,6 +54,7 @@ export const FILLABLE_KINDS: readonly FieldKindForFill[] = Object.freeze([
   'date',
   'month',
   'select',
+  'radio',
   'textarea',
 ])
 
@@ -93,14 +102,14 @@ export const FILL_CATALOG: readonly CatalogEntry[] = Object.freeze([
     path: 'basics.location.city',
     level: 'B',
     synonyms: ['城市', '所在城市', '期望城市', '工作城市', 'city'],
-    kinds: ['text', 'select'],
+    kinds: ['text', 'select', 'radio'],
     read: (a) => a.basics.location?.city ?? null,
   },
   {
     path: 'basics.identity.gender',
     level: 'B',
     synonyms: ['性别', 'gender'],
-    kinds: ['text', 'select'],
+    kinds: ['text', 'select', 'radio'],
     read: (a) => a.basics.identity.gender ?? null,
   },
   {
@@ -138,7 +147,7 @@ export const FILL_CATALOG: readonly CatalogEntry[] = Object.freeze([
     path: 'education.0.studyType.zh',
     level: 'A',
     synonyms: ['学历', '最高学历', 'degree', 'education level'],
-    kinds: ['text', 'select'],
+    kinds: ['text', 'select', 'radio'],
     read: (a) => a.education[0]?.studyType?.zh ?? null,
   },
   {
@@ -152,7 +161,10 @@ export const FILL_CATALOG: readonly CatalogEntry[] = Object.freeze([
     path: 'education.0.endDate',
     level: 'A',
     synonyms: ['毕业时间', '毕业年月', 'graduation', 'graduation date'],
-    kinds: ['text', 'date', 'month'],
+    // select 是真实站点的常态（大易的年份下拉、北森的年/月下拉）——
+    // generic fixture 用 type=month 建模时掩住了这一点，T5.2 的大易
+    // 快照把它暴露出来。年份下拉与档案 YYYY-MM 的缝由 option-mismatch 兜。
+    kinds: ['text', 'date', 'month', 'select'],
     read: (a) => a.education[0]?.endDate ?? null,
   },
 ])
