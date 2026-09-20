@@ -3,10 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- 零后端：这一页不加载任何第三方脚本、字体或图片。CSP 把它写成事实。 -->
+    <!--
+      零后端：这一页不加载任何第三方脚本、字体或图片。CSP 把它写成事实。
+
+      ⚠️ script-src 里的 'wasm-unsafe-eval' 不是疏忽，是必须项（CSP Level 3
+      为 WebAssembly 专设的最小口子，只允许编译 WASM，不允许 eval）：
+      加密层 hash-wasm（Argon2id）与 libsodium（随机数 / XChaCha20）都要
+      实例化 WASM。2026-09-20 事故：漏掉它导致真实浏览器里点「创建并解锁」
+      无任何反应（WASM 编译被拒 → Promise 拒绝）。jsdom 测试不执行 CSP，
+      所以测试全绿 —— 这条约束由 scripts/check-dist.mjs 在构建期钉死。
+    -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'"
     />
     <title>applypack · 匹配报告</title>
   </head>

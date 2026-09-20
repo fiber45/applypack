@@ -6,7 +6,7 @@
   "description": "Web 端静态 SPA（Vite + React + Tailwind）。零后端：档案与密钥都在浏览器里，产物是纯静态文件。T2.3 先落地 match-report 一个特性目录，其余特性随各自任务建。",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/check-dist.mjs",
     "preview": "vite preview",
     "fonts": "node scripts/fetch-fonts.mjs",
     "pretest": "node scripts/fetch-fonts.mjs",

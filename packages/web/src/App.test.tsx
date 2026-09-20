@@ -10,9 +10,18 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+// 只替换 createSession —— 其余导出保持真实实现。
+// 理由：App 会话接线中「创建失败」这条路径在 jsdom 里无法用真实 crypto
+// 走通（跨 realm），而它恰恰是必须钉住的行为（见下方事故用例）。
+vi.mock('./features/vault-session/model', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./features/vault-session/model')>()
+  return { ...actual, createSession: vi.fn() }
+})
 
 import { App } from './App'
+import { createSession } from './features/vault-session/model'
 import { buildPreviewModel } from './features/preview/model'
 import { sampleArchive } from './demo/sample'
 
@@ -38,5 +47,30 @@ describe('App —— 三块功能接线', () => {
     const model = buildPreviewModel(sampleArchive)
     expect(model.cnHtml).toContain('林知远') // sample 档案的姓名事实
     expect(model.intros.length).toBeGreaterThan(0)
+  })
+
+  // 事故用例（2026-09-20）：CSP 缺 'wasm-unsafe-eval' 导致真实浏览器里
+  // WASM（hash-wasm / libsodium）实例化被拒，createSession reject；
+  // 而 onClick 是 `void createSession(...).then(setSession)` 没有 catch ——
+  // 未处理拒绝被吞，用户看到的就是「点了没反应」。两条都必须钉死：
+  // 失败要画成可见状态，且不得假装成功。
+  it('创建失败必须可见 —— 静默无反应是被禁止的状态', async () => {
+    const createMock = vi.mocked(createSession)
+    createMock.mockRejectedValueOnce(new Error('WASM 编译被拒绝（模拟 CSP 事故）'))
+
+    render(<App />)
+    fireEvent.change(screen.getByLabelText('新库口令'), { target: { value: 'test-pass' } })
+    fireEvent.click(screen.getByTestId('vault-create'))
+
+    // 失败必须画出来，且钉住文案前缀（M2 教训：钉具体文案，不是 toThrow）
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toContain('创建密文库失败')
+    expect(alert.textContent).toContain('WASM 编译被拒绝')
+
+    // 界面必须仍停在 no-vault 分支：没有档案、没有密文可导出 —— 失败不得假装成功
+    expect(screen.queryByLabelText('密文内容')).toBeNull()
+    expect(screen.queryByTestId('vault-lock')).toBeNull()
+    // 创建入口仍在 —— 用户可以直接重试
+    expect(screen.getByTestId('vault-create')).toBeTruthy()
   })
 })

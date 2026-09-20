@@ -55,6 +55,11 @@ export function App() {
   const [session, setSession] = useState<VaultSessionState>({ kind: 'no-vault' })
   const [passphrase, setPassphrase] = useState('')
   const [vaultText, setVaultText] = useState('')
+  // 会话级操作失败的可见状态。2026-09-20 事故的直接产物：onClick 里
+  // `void promise.then(...)` 没有 catch，CSP 拒绝 WASM 后拒绝被吞，
+  // 用户看到的「点了没反应」。失败必须画出来 —— 与 openSession 把
+  // unlock-failed 当作一种画面状态是同一条原则，只是来源更广。
+  const [sessionError, setSessionError] = useState<string | null>(null)
 
   const report = useMemo(
     () => buildReportView(matchArchive(sampleArchive, sampleJd, { now: SAMPLE_NOW, limit: SAMPLE_LIMIT })),
@@ -66,6 +71,26 @@ export function App() {
   async function handlePersist(next: Parameters<typeof persistToVault>[1]): Promise<void> {
     if (session.kind === 'unlocked') {
       setSession(await persistToVault(session, next))
+    }
+  }
+
+  /** 创建失败是可见状态：拒绝被接住并画出，绝不静默（见 sessionError 注释）。 */
+  async function handleCreate(): Promise<void> {
+    setSessionError(null)
+    try {
+      setSession(await createSession(passphrase, sampleArchive))
+    } catch (cause) {
+      setSessionError(`创建密文库失败：${cause instanceof Error ? cause.message : String(cause)}`)
+    }
+  }
+
+  /** 导入坏文件会同步抛错 —— 同样画出来，而不是让 React 事件处理器崩掉。 */
+  function handleImport(): void {
+    setSessionError(null)
+    try {
+      setSession(importVaultText(vaultText))
+    } catch (cause) {
+      setSessionError(`导入失败：${cause instanceof Error ? cause.message : String(cause)}`)
     }
   }
 
@@ -108,6 +133,15 @@ export function App() {
 
       {tab === 'archive' && (
         <section className="space-y-6">
+          {sessionError !== null && (
+            <p
+              role="alert"
+              data-testid="vault-error"
+              className="rounded bg-red-50 p-3 text-sm text-red-700"
+            >
+              {sessionError}
+            </p>
+          )}
           {session.kind === 'no-vault' && (
             <div className="rounded border border-slate-200 p-4">
               <h2 className="text-base font-semibold text-slate-900">创建密文库</h2>
@@ -128,7 +162,7 @@ export function App() {
                   data-testid="vault-create"
                   disabled={passphrase.length === 0}
                   onClick={() => {
-                    void createSession(passphrase, sampleArchive).then(setSession)
+                    void handleCreate()
                   }}
                   className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40"
                 >
@@ -146,7 +180,7 @@ export function App() {
                 <button
                   type="button"
                   data-testid="vault-import"
-                  onClick={() => setSession(importVaultText(vaultText))}
+                  onClick={handleImport}
                   className="rounded bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700"
                 >
                   导入
