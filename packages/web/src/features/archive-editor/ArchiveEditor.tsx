@@ -26,6 +26,8 @@ import { useMemo, useState } from 'react'
 
 import { serializeArchive, type ArchiveV1 } from '../../../../core/src/schema/index'
 import { sampleArchive } from '../../demo/sample'
+import { ImportPanel } from '../resume-import/ImportPanel'
+import { mergeParsed } from '../resume-import/parse'
 import {
   addSectionEntry,
   csvFrom,
@@ -86,12 +88,19 @@ function zhOf(entry: Entry, key: string): string {
   return typeof zh === 'string' ? zh : ''
 }
 
+/** 摘要字段可能是纯字符串（company/institution）或 localized。空给诚实的「未填」。 */
+function summaryOf(entry: Entry, key: string, fallback: string): string {
+  const value = entry[key]
+  if (typeof value === 'string' && value !== '') return value
+  return zhOf(entry, key) || fallback
+}
+
 const SECTIONS: readonly SectionDef[] = [
   {
     section: 'education',
     title: '教育经历',
     addLabel: '新增教育经历',
-    entryTitle: (e) => zhOf(e, 'institution') || '（未填学校）',
+    entryTitle: (e) => summaryOf(e, 'institution', '（未填学校）'),
     fields: [
       { key: 'institution', label: '学校', kind: 'text' },
       { key: 'area', label: '专业', kind: 'localized' },
@@ -107,7 +116,7 @@ const SECTIONS: readonly SectionDef[] = [
     section: 'work',
     title: '实习 / 工作经历',
     addLabel: '新增工作经历',
-    entryTitle: (e) => zhOf(e, 'company') || '（未填公司）',
+    entryTitle: (e) => summaryOf(e, 'company', '（未填公司）'),
     fields: [
       { key: 'company', label: '公司', kind: 'text' },
       { key: 'position', label: '职位', kind: 'localized' },
@@ -269,6 +278,8 @@ export function ArchiveEditor({ saved, onPersist }: ArchiveEditorProps) {
         </div>
       </header>
 
+      <ImportPanel onApply={(parsed) => apply(mergeParsed(draft, parsed))} />
+
       <BasicsFields draft={draft} setBasics={setBasics} setLocalized={setLocalized} />
 
       {SECTIONS.map((def) => (
@@ -382,7 +393,7 @@ function SectionEditor(props: {
         {entries.map((raw, index) => {
           const entry = (raw ?? {}) as Entry
           return (
-            <div key={index} className="rounded border border-slate-100 bg-slate-50 p-3">
+            <div key={index} data-testid={`entry-${def.section}-${index}`} className="rounded border border-slate-100 bg-slate-50 p-3">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-xs font-medium text-slate-500">
                   #{index + 1} {def.entryTitle(entry)}

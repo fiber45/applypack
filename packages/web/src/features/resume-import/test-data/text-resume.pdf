@@ -1,0 +1,49 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Length 586 >>
+stream
+BT
+/F1 11 Tf
+16 TL
+48 780 Td
+(Zhiyuan Lin) Tj T*
+(Email: zhiyuan.lin@example.com | Phone: 13800138000) Tj T*
+(EDUCATION) Tj T*
+(Tsinghua University | Computer Science and Technology | Bachelor | 2021-09 - 2025-06) Tj T*
+(GPA 3.8/4.0) Tj T*
+(INTERNSHIP EXPERIENCE) Tj T*
+(ByteDance | Software Engineer Intern | 2024-06 - 2024-09) Tj T*
+(Built internal recruitment tools) Tj T*
+(Tencent | Backend Developer Intern | 2023-07 - 2023-10) Tj T*
+(Maintained messaging services) Tj T*
+(SKILLS) Tj T*
+(JavaScript, TypeScript, Go, SQL) Tj T*
+(AWARDS) Tj T*
+(National Scholarship 2023-10) Tj T*
+ETendstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000338 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+974
+%%EOF

@@ -215,6 +215,9 @@ importers:
       '@react-pdf/renderer':
         specifier: ^4.9.0
         version: 4.9.0(react@19.3.0)
+      pdfjs-dist:
+        specifier: ^6.3.289
+        version: 6.3.289
       react:
         specifier: ^19.3.0
         version: 19.3.0
@@ -243,9 +246,6 @@ importers:
       jsdom:
         specifier: ^30.1.0
         version: 30.1.0(@noble/hashes@1.8.0)
-      pdfjs-dist:
-        specifier: ^6.3.289
-        version: 6.3.289
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3

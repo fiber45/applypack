@@ -6,11 +6,26 @@
  * 已保存徽标不能在错误状态下出现。
  */
 
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { archiveV1Schema, type ArchiveV1 } from '../../../../core/src/schema/index'
 import { ArchiveEditor } from './ArchiveEditor'
+
+// 导入面板的 PDF 抽取在 jsdom 里由 mock 顶替 —— 被测的是「预览 → 填入 →
+// 不覆盖」的界面投影，抽取与解析各自已有 node 层测试。
+vi.mock('../resume-import/extract-file', () => ({
+  readPdfFile: vi.fn(async () => [
+    '林知远',
+    '邮箱：zhiyuan@example.com',
+    '看不懂的杂项行',
+    '教育背景',
+    '清华大学 计算机科学与技术 本科 2021-09 - 2025-06',
+    '实习经历',
+    '字节跳动 后端开发实习生 2024-06 - 2024-09',
+    '美团 后端开发实习生 2023-07 - 2023-10',
+  ]),
+}))
 
 function sample(): ArchiveV1 {
   return archiveV1Schema.parse({
@@ -128,5 +143,77 @@ describe('全库编辑 —— 分区条目在界面上的投影', () => {
       'value',
       expect.stringContaining('林知远'),
     )
+  })
+})
+
+describe('PDF 导入面板 —— 预览 → 填入 → 不覆盖', () => {
+  const importPdf = (): void => {
+    fireEvent.change(screen.getByTestId('import-pdf-input'), {
+      target: {
+        files: [new File(['%PDF-fake'], 'resume.pdf', { type: 'application/pdf' })],
+      },
+    })
+  }
+
+  it('选 PDF → 预览识别计数；点「填入编辑器」→ 草稿获得两段实习与学校，状态变「未保存」', async () => {
+    const onPersist = vi.fn<(a: ArchiveV1) => void>()
+    render(<ArchiveEditor saved={sample()} onPersist={onPersist} />)
+
+    importPdf()
+    await waitFor(() => expect(screen.getByTestId('import-preview')).toBeTruthy())
+    // 预览是诚实的：两段实习、一条教育、还有看不懂的行要交代
+    expect(screen.getByTestId('import-preview').textContent).toContain('实习 / 工作经历：2')
+    expect(screen.getByTestId('import-preview').textContent).toContain('教育经历：1')
+    expect(screen.getByTestId('import-preview').textContent).toContain('看不懂的杂项行')
+
+    fireEvent.click(screen.getByTestId('import-apply'))
+    await waitFor(() =>
+      expect(screen.getByTestId('editor-status').textContent).toBe('有未保存的修改'),
+    )
+    expect(screen.getByLabelText('姓名', { selector: 'input' })).toHaveProperty('value', '张三')
+    // 展开实习分区：两条摘要可见（多段实习是本次的核心诉求）
+    expect(screen.getByTestId('entry-work-0').textContent).toContain('字节跳动')
+    expect(screen.getByTestId('entry-work-1').textContent).toContain('美团')
+
+    // 填入不是保存：没点「保存全部」就没有持久化
+    expect(onPersist).not.toHaveBeenCalled()
+  })
+
+  it('只补空不覆盖：已填的手机号在导入后原样保留', async () => {
+    const onPersist = vi.fn<(a: ArchiveV1) => void>()
+    render(<ArchiveEditor saved={sample()} onPersist={onPersist} />)
+
+    importPdf()
+    await waitFor(() => expect(screen.getByTestId('import-apply')).toBeTruthy())
+    fireEvent.click(screen.getByTestId('import-apply'))
+    await waitFor(() =>
+      expect(screen.getByTestId('editor-status').textContent).toBe('有未保存的修改'),
+    )
+    // sample() 的既有手机号一字不动
+    expect(screen.getByLabelText('手机号', { selector: 'input' })).toHaveProperty(
+      'value',
+      '13800138000',
+    )
+    fireEvent.click(screen.getByTestId('editor-save'))
+    const persisted = onPersist.mock.calls[0]?.[0] as ArchiveV1
+    expect(persisted.basics.contact.phone).toBe('13800138000')
+    expect(persisted.basics.name).toEqual({ zh: '张三' })
+    expect(persisted.work).toHaveLength(2)
+  })
+
+  it('抽取失败 → 错误可见（role=alert），不产生可点入的预览', async () => {
+    const { readPdfFile } = (await import('../resume-import/extract-file')) as {
+      readPdfFile: ReturnType<typeof vi.fn>
+    }
+    readPdfFile.mockRejectedValueOnce(new Error('不是有效的 PDF'))
+    const onPersist = vi.fn<(a: ArchiveV1) => void>()
+    render(<ArchiveEditor saved={sample()} onPersist={onPersist} />)
+
+    importPdf()
+    await waitFor(() => expect(screen.getByTestId('import-error')).toBeTruthy())
+    expect(screen.getByTestId('import-error').getAttribute('role')).toBe('alert')
+    expect(screen.getByTestId('import-error').textContent).toContain('不是有效的 PDF')
+    expect(screen.queryByTestId('import-apply')).toBeNull()
+    expect(screen.getByTestId('editor-status').textContent).toBe('已保存')
   })
 })
