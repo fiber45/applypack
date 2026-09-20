@@ -21,7 +21,7 @@ vi.mock('./features/vault-session/model', async (importOriginal) => {
 })
 
 import { App } from './App'
-import { createSession } from './features/vault-session/model'
+import { createSession, type UnlockedSession } from './features/vault-session/model'
 import { buildPreviewModel } from './features/preview/model'
 import { sampleArchive } from './demo/sample'
 
@@ -72,5 +72,61 @@ describe('App —— 三块功能接线', () => {
     expect(screen.queryByTestId('vault-lock')).toBeNull()
     // 创建入口仍在 —— 用户可以直接重试
     expect(screen.getByTestId('vault-create')).toBeTruthy()
+  })
+
+  // T9.2d —— 扩展的密文副本通道是「粘贴信封」：Web 端必须有一键复制出口。
+  it('解锁后「复制密文信封」把 toVaultText() 写进剪贴板，并给出已复制反馈', async () => {
+    const writeText = vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    })
+
+    const fakeSession = {
+      kind: 'unlocked',
+      vault: {
+        toVaultText: () => 'FAKE-ENVELOPE-TEXT',
+        loadArchive: async () => sampleArchive,
+      } as never,
+      archive: sampleArchive,
+    } as unknown as UnlockedSession
+    vi.mocked(createSession).mockResolvedValueOnce(fakeSession)
+
+    render(<App />)
+    fireEvent.change(screen.getByLabelText('新库口令'), { target: { value: 'test-pass' } })
+    fireEvent.click(screen.getByTestId('vault-create'))
+    await screen.findByTestId('vault-lock')
+
+    fireEvent.click(screen.getByTestId('vault-copy-envelope'))
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith('FAKE-ENVELOPE-TEXT'))
+    expect((await screen.findByTestId('vault-copy-done')).textContent).toContain('已复制')
+  })
+
+  it('复制信封失败必须可见 —— 假装成功会让用户在网申页粘出空气', async () => {
+    const writeText = vi.fn<(text: string) => Promise<void>>().mockRejectedValueOnce(
+      new Error('NotAllowedError'),
+    )
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    })
+
+    const fakeSession = {
+      kind: 'unlocked',
+      vault: { toVaultText: () => 'FAKE-ENVELOPE-TEXT', loadArchive: async () => sampleArchive } as never,
+      archive: sampleArchive,
+    } as unknown as UnlockedSession
+    vi.mocked(createSession).mockResolvedValueOnce(fakeSession)
+
+    render(<App />)
+    fireEvent.change(screen.getByLabelText('新库口令'), { target: { value: 'test-pass' } })
+    fireEvent.click(screen.getByTestId('vault-create'))
+    await screen.findByTestId('vault-lock')
+
+    fireEvent.click(screen.getByTestId('vault-copy-envelope'))
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toContain('复制信封失败')
+    // 失败不得给成功反馈
+    expect(screen.queryByTestId('vault-copy-done')).toBeNull()
   })
 })

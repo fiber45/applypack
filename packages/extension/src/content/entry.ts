@@ -25,6 +25,9 @@ import { asDomDocument } from '../fill/dom'
 import { registerBuiltinPlatformAdapters } from '../fill/platforms'
 import { openPanel, type PanelState } from './panel'
 import { scanPage, type PageScan } from './scan'
+import { createDomFillWriter } from './writer'
+import { unlockFromEnvelopeText } from './envelope-unlock'
+import { mountPanelController } from './session-controller'
 
 export function boot(
   doc: unknown,
@@ -49,4 +52,13 @@ if (doc !== undefined) {
   }
   globals.__APPLYPACK_SCAN__ = scan
   globals.__APPLYPACK_PANEL__ = panel
+
+  // T9.2c —— 真 UI：面板画到页面右上（粘贴信封解锁 → 预览 → 批准）。
+  // globals 仍然挂着：DevTools 冒烟路径不因此消失。
+  const dom = asDomDocument(doc)
+  mountPanelController(doc, doc, panel, {
+    dom,
+    writer: createDomFillWriter(dom),
+    unlockFromEnvelope: unlockFromEnvelopeText,
+  })
 }

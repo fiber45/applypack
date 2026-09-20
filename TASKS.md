@@ -1458,6 +1458,28 @@ T1.1 schema → T1.2 加密 → T2.1 编译 → T2.2 匹配 → T3.2 硬校验 �
 > - **已验证的边界**：正文行含关键词（「做过三个校招项目」）不误切
 >   分区；跟在条目后的无日期行是该条目的描述而非新条目。
 
+### T9.2 扩展真 UI + 粘贴信封解锁（密文副本通道的拍板实现）
+- [x] `content/envelope-unlock.ts`：信封文本 + 口令 → `{archive, vault}`；JSON.parse / parseEnvelopeFile / Vault.open 任一失败返回 null **不抛**（与面板 `UnlockArchive` 接缝同语言）
+- [x] `content/overlay.ts`：PanelState → 真 DOM 渲染（右上角内联样式面板，零样式表注入通道）；locked（信封框+口令框）/ unlock-failed（错误条）/ ready（分列计数 + 逐项复选 + 批准）/ applied / submit-review（放行与放行并回填两出口）/ submit-released（新信封只读框）；`extra.errorText` 会话级红条
+- [x] `content/session-controller.ts`：状态 + vault 持有；异步解锁收口成 `unlockPanel` 的同步接缝；每次状态变化全量重绘；意外失败画红条**不静默**
+- [x] `entry.ts` 浏览器块接线 `mountPanelController`；`__APPLYPACK_SCAN__` / `__APPLYPACK_PANEL__` 全局冒烟通道保留
+- [x] `check-dist.mjs` 加断言：overlay（`overlay-envelope` / `applypack-overlay`）必须进产物
+- [x] Web 端「复制密文信封」按钮（`navigator.clipboard.writeText(exportVaultText(session))`）：成功给「已复制」反馈，失败画 role=alert —— 假装成功 = 用户在网申页粘出空气
+
+> **T9.2 交付注记**（extension 185→204，web 100→102，全仓 963 断言）：
+> - **密文副本通道拍板为「粘贴信封」**：T1.5 的 `CiphertextTransport`
+>   在真实浏览器里没有落地通道（无 popup / 无 background / 零权限），
+>   用户拍板走剪贴板 —— 零权限承诺不破，代价是每个网申页重新粘贴一次
+>   （信封与密钥只活在本页内存）。Web→扩展的自动推送仍是敞口，需要时
+>   在「零权限」约束下另立任务。
+> - 回填的落库出口是**复制新信封回 Web 端**：扩展内存里 `saveArchive`
+>   后 `toVaultText()` 画成只读框 —— 零权限下没有别的持久层。
+> - overlay 的 DOM 接口是自声明的写入侧最小结构面（与 `fill/dom.ts`
+>   读侧对称）；`types:[]` 下 jsdom 的 `window` 是 unknown，测试自带
+>   `MiniDocument` 结构转换。
+> - 变异三杀：控制器吞解锁异常（红条断言）、overlay 删错误条、
+>   App 吞复制失败，各自一杀。
+
 ---
 
 ## 不需要做的事

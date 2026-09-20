@@ -60,6 +60,8 @@ export function App() {
   // 用户看到的「点了没反应」。失败必须画出来 —— 与 openSession 把
   // unlock-failed 当作一种画面状态是同一条原则，只是来源更广。
   const [sessionError, setSessionError] = useState<string | null>(null)
+  // 「复制密文信封」的已复制反馈 —— 扩展粘贴信封流程的第一步（T9.2）。
+  const [envelopeCopied, setEnvelopeCopied] = useState(false)
 
   const report = useMemo(() => {
     // 匹配报告吃**当前会话的档案**（解锁后就是你自己的数据库）；
@@ -95,6 +97,23 @@ export function App() {
       setSession(importVaultText(vaultText))
     } catch (cause) {
       setSessionError(`导入失败：${cause instanceof Error ? cause.message : String(cause)}`)
+    }
+  }
+
+  /**
+   * T9.2 —— 扩展的密文副本通道是「粘贴信封」：Web 端负责把信封送进剪贴板。
+   * 剪贴板写入失败（权限 / 非安全上下文）画成可见错误 —— 复制失败却提示
+   * 成功，用户会在网申页粘出一堆空气。
+   */
+  async function handleCopyEnvelope(): Promise<void> {
+    setEnvelopeCopied(false)
+    setSessionError(null)
+    try {
+      if (session.kind === 'no-vault') return
+      await navigator.clipboard.writeText(exportVaultText(session))
+      setEnvelopeCopied(true)
+    } catch (cause) {
+      setSessionError(`复制信封失败：${cause instanceof Error ? cause.message : String(cause)}`)
     }
   }
 
@@ -247,6 +266,21 @@ export function App() {
                 >
                   导出 .vault 文本
                 </button>
+                <button
+                  type="button"
+                  data-testid="vault-copy-envelope"
+                  onClick={() => {
+                    void handleCopyEnvelope()
+                  }}
+                  className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white"
+                >
+                  复制密文信封
+                </button>
+                {envelopeCopied && (
+                  <span data-testid="vault-copy-done" className="self-center text-sm text-green-700">
+                    已复制 —— 到网申页面粘贴进扩展面板
+                  </span>
+                )}
               </div>
               {vaultText !== '' && (
                 <textarea
