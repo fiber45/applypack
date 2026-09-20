@@ -61,10 +61,12 @@ export function App() {
   // unlock-failed 当作一种画面状态是同一条原则，只是来源更广。
   const [sessionError, setSessionError] = useState<string | null>(null)
 
-  const report = useMemo(
-    () => buildReportView(matchArchive(sampleArchive, sampleJd, { now: SAMPLE_NOW, limit: SAMPLE_LIMIT })),
-    [],
-  )
+  const report = useMemo(() => {
+    // 匹配报告吃**当前会话的档案**（解锁后就是你自己的数据库）；
+    // 未建库时用示例档案做引擎演示。同一份 JD，报告随档案切换。
+    const input = session.kind === 'unlocked' ? session.archive : sampleArchive
+    return buildReportView(matchArchive(input, sampleJd, { now: SAMPLE_NOW, limit: SAMPLE_LIMIT }))
+  }, [session])
 
   const archive = session.kind === 'unlocked' ? session.archive : null
 
@@ -78,7 +80,9 @@ export function App() {
   async function handleCreate(): Promise<void> {
     setSessionError(null)
     try {
-      setSession(await createSession(passphrase, sampleArchive))
+      // 新库从**空档案**起步：这是用户自己的数据库，预置示例数据是越俎代庖
+      // （示例改为编辑器里的「载入示例档案」按钮，且只是草稿，不自动保存）。
+      setSession(await createSession(passphrase))
     } catch (cause) {
       setSessionError(`创建密文库失败：${cause instanceof Error ? cause.message : String(cause)}`)
     }
